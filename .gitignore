@@ -1,5 +1,6 @@
 .idea
 .phpunit.result.cache
+.phpunit.cache/test-results
 build
 composer.lock
 coverage
@@ -9,3 +10,9 @@ phpstan.neon
 testbench.yaml
 vendor
 node_modules
+
+skills-lock.json
+
+/.agents
+/.agent
+/.claude

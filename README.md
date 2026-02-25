@@ -1,86 +1,62 @@
-# :package_description
+# Filament Chatbot
 
-## <!--delete-->
-
-This repo can be used to scaffold a Laravel package. Follow these steps to get started:
-
-1. Press the "Use template" button at the top of this repo to create a new repo with the contents of this skeleton.
-2. Run "php ./configure.php" to run a script that will replace all placeholders throughout all the files.
-3. Have fun creating your package.
-
----
-
-<!--/delete-->
-
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
-
-## Installation
-
-You can install the package via composer:
-
-```bash
-composer require :vendor_slug/:package_slug
-```
-
-You can publish and run the migrations with:
-
-```bash
-php artisan vendor:publish --tag=":package_slug-migrations"
-php artisan migrate
-```
-
-You can publish the config file with:
-
-```bash
-php artisan vendor:publish --tag=":package_slug-config"
-```
-
-This is the contents of the published config file:
-
-```php
-return [
-];
-```
-
-Optionally, you can publish the views using
-
-```bash
-php artisan vendor:publish --tag=":package_slug-views"
-```
-
-## Usage
-
-```php
-$variable = new VendorName\Skeleton();
-echo $variable->echoPhrase('Hello, VendorName!');
-```
+A Filament v3 plugin that adds a floating, streaming chatbot widget to your panel using Laravel AI.
 
 ## Documentation
 
-For the full documentation, check [here](./docs/index.md).
+For detailed setup instructions and the complete reference, see the full documentation:
 
-## Testing
+
+- [Installation](docs/index.md#installation)
+- [Register the Filament plugin](docs/index.md#register-the-filament-plugin)
+- [Plugin API](docs/index.md#plugin-api)
+- [Configuration reference](docs/index.md#configuration-reference)
+- [Custom agent](docs/index.md#custom-agent)
+- [Tools](docs/index.md#tools)
+- [Conversations and persistence](docs/index.md#conversations-and-persistence)
+
+**Full documentation:** [docs/index.md](docs/index.md)
+
+## Quick Start
+
+Install the package:
 
 ```bash
-vendor/bin/pest
+composer require wotz/filament-chatbot
 ```
 
-## Changelog
+Publish and run migrations:
 
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
+```bash
+php artisan vendor:publish --tag="filament-chatbot-migrations"
+php artisan migrate
+```
 
-## Upgrading
+Register the plugin in your Filament panel provider:
 
-Please see [UPGRADING](UPGRADING.md) for more information on how to upgrade to a new version.
+```php
+use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 
-## Contributing
+$panel->plugin(ChatbotPlugin::make());
+```
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
+Optional: publish config:
 
-## Security Vulnerabilities
+```bash
+php artisan vendor:publish --tag="filament-chatbot-config"
+```
 
-If you discover any security-related issues, please email info@codedor.be instead of using the issue tracker.
+## Project Links
+
+- [Changelog](CHANGELOG.md)
+- [Upgrade guide](UPGRADING.md)
+- [Contributing](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+
+## Security
+
+If you discover a security vulnerability, please email `info@codedor.be` instead of opening a public issue.
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+MIT. See [LICENSE.md](LICENSE.md).

@@ -1,5 +1,320 @@
-# :package_description
+# Filament Chatbot Documentation
 
 ## Introduction
 
+`wotz/filament-chatbot` integrates a streaming AI chatbot directly into Filament panels.
+
+It uses Laravel AI for model/provider integration, persists conversation data, and exposes a panel plugin API to customize behavior and UI.
+
 ## Installation
+
+```bash
+composer require wotz/filament-chatbot
+```
+
+```bash
+php artisan vendor:publish --tag="filament-chatbot-migrations"
+```
+
+```bash
+php artisan migrate
+```
+
+Optional — publish the config file to customize defaults:
+
+```bash
+php artisan vendor:publish --tag="filament-chatbot-config"
+```
+
+## Register the Filament Plugin
+
+In your panel provider:
+
+```php
+use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
+
+$panel->plugin(ChatbotPlugin::make());
+```
+
+## Plugin API
+
+`ChatbotPlugin` supports fluent configuration per panel. Every option accepts a `Closure` in addition to a static value, which is evaluated at runtime. This allows you to base configuration on the authenticated user, tenant, or any other runtime context.
+
+```php
+ChatbotPlugin::make()
+    ->enabled(fn () => auth()->user()->hasFeature('chatbot'))
+    ->botName(fn () => 'Assistant for ' . auth()->user()->company_name)
+    ->agent(fn () => auth()->user()->isPremium() ? PremiumAgent::class : BasicAgent::class)
+```
+
+Available methods:
+
+| Method | Type | Description |
+|---|---|---|
+| `enabled()` | `bool\|Closure` | Show or hide the chatbot |
+| `agent()` | `string\|Closure` | Agent class to use |
+| `provider()` | `string\|array\|Closure\|null` | AI provider override |
+| `model()` | `string\|Closure\|null` | Model override |
+| `tools()` | `array` | Per-panel tool classes |
+| `conversationKey()` | `string\|Closure` | Session key for conversation ID |
+| `botName()` | `string\|Closure` | Name shown in widget header |
+| `welcomeMessage()` | `string\|Closure` | Supports markdown |
+| `buttonText()` | `string\|Closure` | Floating button label |
+| `buttonIcon()` | `string\|Closure` | Heroicon name for the button |
+| `chatWidth()` | `string\|Closure` | Any CSS value (px, rem, …) |
+| `chatHeight()` | `string\|Closure` | Any CSS value (px, rem, …) |
+| `logoUrl()` | `string\|Closure\|null` | Custom logo shown next to bot messages |
+
+### The `enabled` option
+
+The `enabled` option controls widget visibility and has three meaningful states:
+
+- `true` — always render the widget (including for guests)
+- `false` — never render the widget
+- `null` — only render for authenticated users (default fallback when not configured)
+
+## Configuration Reference
+
+Publish the config file to set application-wide defaults:
+
+```bash
+php artisan vendor:publish --tag="filament-chatbot-config"
+```
+
+All values can be overridden per panel using the `ChatbotPlugin` fluent API.
+
+### Supported environment variables
+
+| Variable | Config key | Default |
+|---|---|---|
+| `FILAMENT_CHATBOT_ENABLED` | `enabled` | `true` |
+| `FILAMENT_CHATBOT_PROVIDER` | `provider` | `openai` |
+| `FILAMENT_CHATBOT_MODEL` | `model` | `gpt-4o-mini` |
+| `FILAMENT_CHATBOT_TIMEOUT` | `timeout` | `60` |
+
+See the published config/filament-chatbot.php file for the full list of available options.
+
+## Custom Agent
+
+The default agent (`Assistant`) reads its configuration from `config/filament-chatbot.php`. You can replace it with your own agent class to change behavior, add custom instructions, or use different tools per context.
+
+### Extending the default Assistant
+
+For most use cases, the simplest approach is to extend the built-in `Assistant` class and only override what you need:
+
+```php
+use Wotz\FilamentChatbot\Agents\Assistant;
+
+class SupportAgent extends Assistant
+{
+    public function instructions(): string
+    {
+        return 'You are a support agent. Only answer questions about our product.';
+    }
+}
+```
+
+All other behavior (tools, provider, model, timeout, conversation memory) is inherited from `Assistant` and continues to read from the config file.
+
+### Building a fully custom agent
+
+If you need full control, you can build an agent from scratch using the Laravel AI package. Refer to the [Laravel AI SDK — Agents documentation](https://laravel.com/docs/12.x/ai-sdk#agents) for all available contracts, traits, and configuration options.
+
+A custom agent compatible with this package should implement `Conversational` (via the `RemembersConversations` trait) to enable conversation memory — the agent will reconstruct history from the database on each request. Without it, each message is handled independently.
+
+It should also use the `UsesToolsFromConfig` trait in its `tools()` method to ensure both globally and locally registered tools are included:
+
+```php
+use Wotz\FilamentChatbot\Agents\Concerns\UsesToolsFromConfig;
+
+class SupportAgent implements Agent, Conversational, HasTools
+{
+    use Promptable, RemembersConversations, UsesToolsFromConfig;
+    // ...
+}
+```
+
+### Registering a custom agent
+
+Set the agent globally in config:
+
+```php
+// config/filament-chatbot.php
+'agent' => \App\Ai\Agents\SupportAgent::class,
+```
+
+Or per panel via the plugin:
+
+```php
+ChatbotPlugin::make()->agent(\App\Ai\Agents\SupportAgent::class)
+```
+
+## Tools
+
+Tools allow the chatbot to perform actions during a conversation — such as looking up data, calling APIs, or executing logic. Each tool is a class that implements `Laravel\Ai\Contracts\Tool`.
+
+Tools are instantiated through the service container, so constructor dependencies are automatically injected.
+
+### Creating a tool class
+
+Generate a tool with Laravel AI:
+
+```bash
+php artisan make:tool LookupOrderTool
+```
+
+Implement the required methods in the generated class:
+
+- `description()` — explains to the AI what the tool does
+- `schema()` — defines the input parameters the AI must provide
+- `handle()` — executes the tool and returns the result
+
+Official reference: [Laravel AI SDK - Tools](https://laravel.com/docs/12.x/ai-sdk#tools)
+
+### Global tool registration
+
+Global tools are available across all panels. Register them in `config/filament-chatbot.php` under a `tools` key:
+
+```php
+// config/filament-chatbot.php
+
+'tools' => [
+    \App\AI\Tools\LookupOrderTool::class,
+    \App\AI\Tools\FetchProductTool::class,
+],
+```
+
+These tools are always loaded, regardless of which panel the chatbot is used in.
+
+### Local (per-panel) tool registration
+
+Local tools are registered on a specific panel's plugin instance. They are merged with any globally configured tools:
+
+```php
+// App\Providers\Filament\AdminPanelProvider
+
+use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
+
+$panel->plugin(
+    ChatbotPlugin::make()->tools([
+        \App\AI\Tools\AdminReportTool::class,
+    ])
+);
+```
+
+Tools registered this way are only available in that specific panel. If the same tool class is registered both globally and locally, it will only be passed to the agent once.
+
+## Conversations and Persistence
+
+The package creates and uses two database tables:
+
+- `agent_conversations` — one row per conversation, linked to a user
+- `agent_conversation_messages` — all messages (user + assistant) belonging to a conversation
+
+The messages table also stores internal entries such as tool calls and tool results. These are persisted for context reconstruction, but only messages with role `user` or `assistant` are shown in the widget UI.
+
+### How the session tracks conversations
+
+When a user sends their first message, the package creates a new conversation record and stores its UUID in the session. On subsequent page loads, the widget reads this UUID from the session and restores the conversation history from the database.
+
+The session key used to store the conversation ID defaults to:
+
+```
+ai_chatbot_conversation_id_{panelId}
+```
+
+So for a panel with ID `admin`, the session key would be `ai_chatbot_conversation_id_admin`.
+
+### Per-panel conversations (default)
+
+Because each panel has a unique ID, every panel gets its own independent conversation by default. A user switching from the `admin` panel to the `customer` panel will start a fresh conversation there.
+
+### Sharing a conversation across panels
+
+If you want multiple panels to share the same conversation, configure the same `conversationKey` on each panel's plugin:
+
+```php
+// App\Providers\Filament\AdminPanelProvider
+ChatbotPlugin::make()
+    ->conversationKey('shared_ai_conversation')
+```
+
+```php
+// App\Providers\Filament\CustomerPanelProvider
+ChatbotPlugin::make()
+    ->conversationKey('shared_ai_conversation')
+```
+
+Both panels will now read from and write to the same session key, meaning conversation history is preserved when navigating between them.
+
+You may also use a `Closure` to compute the key dynamically at runtime:
+
+```php
+ChatbotPlugin::make()
+    ->conversationKey(fn () => 'ai_conversation_' . auth()->user()->account_id)
+```
+
+## UI Customization
+
+### Welcome message
+
+The welcome message supports markdown, so you can use bold text, links, lists, and other formatting:
+
+```php
+ChatbotPlugin::make()
+    ->welcomeMessage('Hello! I can help you with:\n- **Orders**\n- **Returns**\n- **Account questions**')
+```
+
+### Logo
+
+By default, bot messages show a sparkle icon. You can replace this with a custom image:
+
+```php
+ChatbotPlugin::make()
+    ->logoUrl(asset('images/bot-avatar.png'))
+```
+
+### User avatar
+
+User messages display the authenticated user's avatar. The widget reads this from `auth()->user()->avatar_url`. If that attribute does not exist on your user model, the widget falls back to a generic user icon.
+
+### Window dimensions and position
+
+The chat window defaults to 400×600px and appears in the bottom-right corner. Users can toggle the position to the left side — this preference is persisted in the session.
+
+```php
+ChatbotPlugin::make()
+    ->chatWidth('500px')
+    ->chatHeight('700px')
+```
+
+## Streaming Endpoint
+
+Responses are streamed over HTTP using Server-Sent Events (SSE). The streaming route is registered automatically by the service provider.
+
+You can customize the route in the config file:
+
+```php
+'route' => [
+    'name'       => 'chatbot.stream',
+    'path'       => 'ai/chatbot/stream/{token}',
+    'middleware' => ['auth', 'web'],
+],
+```
+
+The `middleware` array controls who can access the streaming endpoint. The default `auth` middleware ensures only authenticated users can receive streamed responses. You may add additional middleware such as throttle or custom guards here.
+
+> **Note:** The route configuration is global. If different panels need different middleware, consider using a custom middleware that reads panel context.
+
+## Testing
+
+```bash
+vendor/bin/pest
+```
+
+## Related Docs
+
+- [README](../README.md)
+- [CHANGELOG](../CHANGELOG.md)
+- [UPGRADING](../UPGRADING.md)
+- [CONTRIBUTING](../CONTRIBUTING.md)

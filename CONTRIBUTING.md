@@ -1,52 +1,49 @@
-# CONTRIBUTING
+# Contributing
 
-## New Features or bug fixes
+Thanks for contributing to `wotzebra/filament-chatbot`.
 
-We love pull requests from everyone. By participating in this project, you agree to abide by our [code of conduct](CODE_OF_CONDUCT.md).
+## Development Workflow
 
-[Fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo), then clone the repo:
+1. Fork the repository and clone your fork.
 
 ```bash
-git clone git@github.com:your-username/:package_slug.git
+git clone git@github.com:your-username/filament-chatbot.git
+cd filament-chatbot
 ```
 
-Install the composer packages:
+2. Install dependencies.
 
 ```bash
 composer install
 ```
 
-Make sure the tests pass:
+3. Run tests and static checks.
 
 ```bash
 vendor/bin/pest
+vendor/bin/phpstan analyse
+vendor/bin/pint --test
 ```
 
-Make your change. Add tests for your change.
+4. Make your changes and add/adjust tests.
+5. Update docs and changelog when behavior changes.
+6. Push your branch and open a pull request.
 
-Push to your fork and submit a pull request.
+## Pull Request Guidelines
 
-At this point you're waiting on us. We may suggest some changes or improvements or alternatives.
+- Keep changes focused and atomic.
+- Include tests for bug fixes and new features.
+- Follow existing code style and architecture patterns.
+- Document user-facing changes in `README.md`, `docs/index.md`, and `CHANGELOG.md`.
 
-Some things that will increase the chance that your pull request is accepted:
+## Reporting Issues
 
--   Write tests.
--   Follow our style guide.
--   Document any change in behaviour - Make sure the README.md and any other relevant documentation are up-to-date.
--   Write a good commit message.
+Before opening an issue:
 
-## Submitting an issue
+- Check existing issues for duplicates.
+- Provide clear reproduction steps.
+- Include relevant environment details (PHP, Laravel, Filament versions).
 
-Some things to consider before submitting an issue
+## Code of Conduct
 
--   Search the existing issues to see if it already has been asked or reported.
--   If you do find a similar issue, upvote it by adding a 👍 reaction . If you have relevant information to add, do so in a comment. Please don't add a `+1` comment.
--   When making an issue, follow the issue templates and provide as much information as possible, even better try to provide a repository demonstrating the issue.
-
-## Coding style
-
-See our [guidelines](https://guidelines.codedor.be/coding-standards/php).
-
-### Laravel Pint
-
-Don't worry if your code styling is not perfect! Each of our packages have a [Laravel Pint](https://github.com/laravel/pint) Github Action will automatically merge any style fixes into the package when you commit changes to a pull request.
+By participating, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
