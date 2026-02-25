@@ -6,6 +6,8 @@
 
 It uses Laravel AI for model/provider integration, persists conversation data, and exposes a panel plugin API to customize behavior and UI.
 
+Supported Filament versions: `3.x`, `4.x`, and `5.x`.
+
 ## Installation
 
 ```bash

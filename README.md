@@ -1,6 +1,6 @@
 # Filament Chatbot
 
-A Filament v3 plugin that adds a floating, streaming chatbot widget to your panel using Laravel AI.
+A Filament plugin (v3, v4, v5) that adds a floating, streaming chatbot widget to your panel using Laravel AI.
 
 ## Documentation
 

@@ -5,7 +5,7 @@ namespace Wotz\FilamentChatbot\Filament\Plugins;
 use Closure;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
-use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use RuntimeException;
 
 class ChatbotPlugin implements Plugin
@@ -68,15 +68,15 @@ class ChatbotPlugin implements Plugin
     public function getConversationKey(): string
     {
         return (string) $this->resolveProp(
-            $this->conversationKey ?? fn () => 'ai_chatbot_conversation_id_' . filament()->getCurrentPanel()->getId(),
+            $this->conversationKey ?? fn (): string => 'ai_chatbot_conversation_id_' . $this->resolveCurrentPanelId(),
         );
     }
 
     public function register(Panel $panel): void
     {
         $panel->renderHook(
-            PanelsRenderHook::BODY_END,
-            fn () => view('filament-chatbot::components.filament-chatbot-widget'),
+            $this->resolveBodyEndRenderHook(),
+            fn (): View => view('filament-chatbot::components.filament-chatbot-widget'),
         );
     }
 
@@ -229,5 +229,26 @@ class ChatbotPlugin implements Plugin
     protected function resolveProp(mixed $value, mixed $default = null): mixed
     {
         return is_callable($value) ? ($value)() : ($value ?? $default);
+    }
+
+    protected function resolveCurrentPanelId(): string
+    {
+        $filament = filament();
+
+        $panel = match (true) {
+            method_exists($filament, 'getCurrentPanel') => $filament->getCurrentPanel(),
+            method_exists($filament, 'getCurrentOrDefaultPanel') => $filament->getCurrentOrDefaultPanel(),
+            method_exists($filament, 'getDefaultPanel') => $filament->getDefaultPanel(),
+            default => null,
+        };
+
+        return $panel?->getId() ?? 'default';
+    }
+
+    protected function resolveBodyEndRenderHook(): string
+    {
+        return defined(\Filament\View\PanelsRenderHook::class . '::BODY_END')
+            ? \Filament\View\PanelsRenderHook::BODY_END
+            : 'panels::body.end';
     }
 }
