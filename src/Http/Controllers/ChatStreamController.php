@@ -10,6 +10,8 @@ class ChatStreamController
 {
     public function __invoke(string $token, ChatStreamRequest $request): mixed
     {
+        set_time_limit(0);
+
         $chatbot = filament('chatbot');
 
         app(ToolRegistry::class)->withTools($chatbot->getTools());
