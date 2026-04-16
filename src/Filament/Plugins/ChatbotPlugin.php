@@ -37,6 +37,8 @@ class ChatbotPlugin implements Plugin
 
     protected string|Closure|null $logoUrl = null;
 
+    protected string|Closure|null $userModel = null;
+
     public static function make(): static
     {
         return app(static::class);
@@ -225,6 +227,21 @@ class ChatbotPlugin implements Plugin
     public function getChatHeight(): string
     {
         return (string) $this->resolveProp($this->chatHeight, '600px');
+    }
+
+    public function userModel(string|Closure $userModel): static
+    {
+        $this->userModel = $userModel;
+
+        return $this;
+    }
+
+    public function getUserModel(): string
+    {
+        return (string) $this->resolveProp(
+            $this->userModel,
+            config('filament-chatbot.user_model', config('auth.providers.users.model')),
+        );
     }
 
     protected function resolveProp(mixed $value, mixed $default = null): mixed

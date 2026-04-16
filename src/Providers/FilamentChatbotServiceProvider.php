@@ -10,6 +10,7 @@ use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Wotz\FilamentChatbot\Http\Controllers\ChatStreamController;
+use Wotz\FilamentChatbot\Livewire\ChatbotConversation;
 use Wotz\FilamentChatbot\Livewire\ChatbotWidget;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 
@@ -50,8 +51,9 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
         ], 'wotz/filament-chatbot');
 
         Livewire::component('chatbot-widget', ChatbotWidget::class);
+        Livewire::component('chatbot-conversation', ChatbotConversation::class);
 
-        Route::get('ai/chatbot/stream', ChatStreamController::class)
+        Route::post('ai/chatbot/stream', ChatStreamController::class)
             ->middleware(config('filament-chatbot.route_middleware', ['auth', 'web']))
             ->name('chatbot.stream');
     }

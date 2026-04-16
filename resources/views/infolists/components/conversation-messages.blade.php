@@ -11,7 +11,7 @@
         @if ($message->role === 'user')
             <div class="flex items-start justify-end gap-2.5">
                 <div class="max-w-[75%]">
-                    <div class="chatbot-bubble chatbot-bubble-user rounded-[1.1rem_1.1rem_0.35rem_1.1rem] bg-[linear-gradient(135deg,var(--color-primary-600,#0A7B65),var(--color-primary-500,#0BA284))] px-4 py-3 text-sm leading-6 text-white shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]">
+                    <div class="chatbot-bubble chatbot-bubble-user prose prose-sm prose-invert max-w-none rounded-[1.1rem_1.1rem_0.35rem_1.1rem] bg-[linear-gradient(135deg,var(--color-primary-600,#0A7B65),var(--color-primary-500,#0BA284))] px-4 py-3 text-sm leading-6 text-white shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]">
                         {!! str($message->content)->markdown() !!}
                     </div>
                     <div class="mt-1 text-right text-xs text-gray-400">
@@ -28,7 +28,7 @@
                     <x-heroicon-m-sparkles class="h-3.5 w-3.5" />
                 </div>
                 <div class="min-w-0 max-w-[85%]">
-                    <div class="chatbot-bubble chatbot-bubble-assistant rounded-[1.1rem_1.1rem_1.1rem_0.35rem] border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]">
+                    <div class="chatbot-bubble chatbot-bubble-assistant prose prose-sm max-w-none rounded-[1.1rem_1.1rem_1.1rem_0.35rem] border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]">
                         {!! str($message->content)->markdown() !!}
                     </div>
                     <div class="mt-1 text-xs text-gray-400">

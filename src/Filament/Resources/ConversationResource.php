@@ -9,6 +9,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Wotz\FilamentChatbot\Filament\Resources\ConversationResource\Pages\ListConversations;
 use Wotz\FilamentChatbot\Filament\Resources\ConversationResource\Pages\ViewConversation;
 use Wotz\FilamentChatbot\Models\AgentConversation;
@@ -33,7 +34,7 @@ class ConversationResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('user_id')
+                TextColumn::make('user.name')
                     ->label('User')
                     ->sortable(),
 
@@ -61,7 +62,7 @@ class ConversationResource extends Resource
                     ->schema([
                         TextEntry::make('title'),
 
-                        TextEntry::make('user_id')
+                        TextEntry::make('user.name')
                             ->label('User'),
 
                         TextEntry::make('created_at')
@@ -81,6 +82,11 @@ class ConversationResource extends Resource
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('user_id', auth()->id());
     }
 
     public static function getPages(): array

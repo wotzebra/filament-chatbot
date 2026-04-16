@@ -7,4 +7,5 @@ return [
     'thinking' => 'Thinking...',
     'placeholder' => 'Send a message...',
     'send' => 'Send message',
+    'open_fullscreen' => 'Open fullscreen',
 ];

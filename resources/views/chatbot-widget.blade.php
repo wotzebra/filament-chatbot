@@ -48,6 +48,17 @@
                     :label="__('filament-chatbot::chatbot.new_session')"
                     :tooltip="__('filament-chatbot::chatbot.new_session')"
                 />
+                @if ($conversationId)
+                    <x-filament::icon-button
+                        color="gray"
+                        icon="heroicon-o-arrows-pointing-out"
+                        :href="\Wotz\FilamentChatbot\Filament\Resources\ConversationResource::getUrl('view', ['record' => $conversationId])"
+                        tag="a"
+                        x-on:click="$wire.panelHidden = true"
+                        :label="__('filament-chatbot::chatbot.open_fullscreen')"
+                        :tooltip="__('filament-chatbot::chatbot.open_fullscreen')"
+                    />
+                @endif
                 @if ($showPositionBtn)
                     <x-filament::icon-button
                         color="gray"
@@ -90,7 +101,7 @@
                     @if ($message->role === \Laravel\Ai\Messages\MessageRole::User->value)
                         <div class="flex items-start justify-end gap-2.5">
                             <div class="max-w-[75%]">
-                                <div class="chatbot-bubble chatbot-bubble-user rounded-[1.1rem_1.1rem_0.35rem_1.1rem] bg-[linear-gradient(135deg,var(--color-primary-600,#0A7B65),var(--color-primary-500,#0BA284))] px-4 py-3 text-sm leading-6 text-white shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]">
+                                <div class="chatbot-bubble chatbot-bubble-user prose prose-sm prose-invert max-w-none rounded-[1.1rem_1.1rem_0.35rem_1.1rem] bg-[linear-gradient(135deg,var(--color-primary-600,#0A7B65),var(--color-primary-500,#0BA284))] px-4 py-3 text-sm leading-6 text-white shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]">
                                     {!! Str::markdown($message->content) !!}
                                 </div>
                             </div>
@@ -108,7 +119,7 @@
                                 </div>
                             @endif
                             <div class="min-w-0 flex-1">
-                                <div class="chatbot-bubble chatbot-bubble-assistant rounded-[1.1rem_1.1rem_1.1rem_0.35rem] border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]">
+                                <div class="chatbot-bubble chatbot-bubble-assistant prose prose-sm max-w-none rounded-[1.1rem_1.1rem_1.1rem_0.35rem] border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]">
                                     {!! Str::markdown($message->content) !!}
                                 </div>
                             </div>
@@ -121,7 +132,7 @@
                 <div x-data="{
                     streamingText: '',
                     streamKey: @js(($conversationId ?? '') . ':' . md5($streamMessage)),
-                    source: null,
+                    abortController: null,
                     finalized: false,
                     get sanitizedHtml() {
                         if (! this.streamingText) {
@@ -134,9 +145,9 @@
                             .replace(/\n/g, '<br>');
                     },
                     cleanup() {
-                        if (this.source) {
-                            this.source.close();
-                            this.source = null;
+                        if (this.abortController) {
+                            this.abortController.abort();
+                            this.abortController = null;
                         }
 
                         if (window.__filamentChatbotStreams?.[this.streamKey]) {
@@ -152,39 +163,76 @@
                         this.cleanup();
                         $wire.onStreamComplete(this.streamingText);
                     },
-                    init() {
+                    async init() {
                         window.__filamentChatbotStreams ??= {};
 
                         if (window.__filamentChatbotStreams[this.streamKey]) {
                             return;
                         }
 
-                        const params = new URLSearchParams({
-                            message: @js($streamMessage),
-                            conversation_id: @js($conversationId),
-                        });
-
-                        this.source = new EventSource(@js($streamRouteBase) + '?' + params.toString());
                         window.__filamentChatbotStreams[this.streamKey] = true;
+                        this.abortController = new AbortController();
 
-                        this.source.onmessage = (e) => {
-                            if (e.data === '[DONE]') {
+                        try {
+                            const response = await fetch(@js($streamRouteBase), {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'text/event-stream',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content,
+                                },
+                                body: JSON.stringify({
+                                    message: @js($streamMessage),
+                                    conversation_id: @js($conversationId),
+                                }),
+                                signal: this.abortController.signal,
+                            });
+
+                            if (!response.ok || !response.body) {
                                 this.finalize();
                                 return;
                             }
-                            try {
-                                const event = JSON.parse(e.data);
-                                if (event.type === 'text_delta') {
-                                    this.streamingText += event.delta;
+
+                            const reader = response.body.getReader();
+                            const decoder = new TextDecoder();
+                            let buffer = '';
+
+                            while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+
+                                buffer += decoder.decode(value, { stream: true });
+                                const lines = buffer.split('\n');
+                                buffer = lines.pop();
+
+                                for (const line of lines) {
+                                    if (!line.startsWith('data: ')) continue;
+                                    const data = line.slice(6);
+
+                                    if (data === '[DONE]') {
+                                        this.finalize();
+                                        return;
+                                    }
+
+                                    try {
+                                        const event = JSON.parse(data);
+                                        if (event.type === 'text_delta') {
+                                            this.streamingText += event.delta;
+                                        }
+                                        if (event.type !== 'text_delta' && typeof event.message === 'string' && event.message !== '') {
+                                            this.streamingText = event.message;
+                                        }
+                                    } catch (err) {
+                                        console.warn('Stream parse error:', err);
+                                    }
                                 }
-                                if (event.type !== 'text_delta' && typeof event.message === 'string' && event.message !== '') {
-                                    this.streamingText = event.message;
-                                }
-                            } catch (err) {}
-                        };
-                        this.source.onerror = () => {
+                            }
+
                             this.finalize();
-                        };
+                        } catch (err) {
+                            console.warn('Stream fetch error:', err);
+                            this.finalize();
+                        }
                     }
                 }" x-init="init()" class="flex items-start gap-2.5">
                     @if ($logoUrl && $logoUrl !== '')
@@ -195,7 +243,7 @@
                         </div>
                     @endif
                     <div class="min-w-0 flex-1">
-                        <div class="chatbot-bubble chatbot-bubble-assistant rounded-[1.1rem_1.1rem_1.1rem_0.35rem] border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]" x-html="sanitizedHtml"></div>
+                        <div class="chatbot-bubble chatbot-bubble-assistant prose prose-sm max-w-none rounded-[1.1rem_1.1rem_1.1rem_0.35rem] border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-[0_18px_40px_-32px_rgb(15_23_42/0.45)]" x-html="sanitizedHtml"></div>
                     </div>
                 </div>
             @endif

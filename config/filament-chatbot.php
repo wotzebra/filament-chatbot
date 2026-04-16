@@ -94,6 +94,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | User Model
+    |--------------------------------------------------------------------------
+    |
+    | The Eloquent model used to resolve the user associated with a
+    | conversation. When null, the default auth provider model is used.
+    | You may override this per panel by calling userModel() on the plugin.
+    |
+    */
+
+    'user_model' => null,
+
+    /*
+    |--------------------------------------------------------------------------
     | Stream Route Middleware
     |--------------------------------------------------------------------------
     |

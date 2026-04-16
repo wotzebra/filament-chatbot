@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Laravel\Ai\Messages\MessageRole;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class ChatbotWidget extends Component
@@ -15,32 +16,42 @@ class ChatbotWidget extends Component
 
     public string $question = '';
 
+    #[Locked]
     public ?string $conversationId = null;
 
     public bool $isStreaming = false;
 
     public string $streamMessage = '';
 
+    #[Locked]
     public string $name;
 
+    #[Locked]
     public string $buttonText;
 
+    #[Locked]
     public string $buttonIcon;
 
+    #[Locked]
     public string $welcomeMessage;
 
+    #[Locked]
     public string $winWidth;
 
+    #[Locked]
     public string $winHeight;
 
     public string $winPosition;
 
+    #[Locked]
     public bool $showPositionBtn;
 
     public bool $panelHidden;
 
+    #[Locked]
     public string|false $logoUrl;
 
+    #[Locked]
     public string $streamRouteBase;
 
     public function mount(): void
