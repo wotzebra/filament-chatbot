@@ -6,7 +6,6 @@ A Filament plugin (v4, v5) that adds a floating, streaming chatbot widget to you
 
 For detailed setup instructions and the complete reference, see the full documentation:
 
-
 - [Installation](docs/index.md#installation)
 - [Register the Filament plugin](docs/index.md#register-the-filament-plugin)
 - [Plugin API](docs/index.md#plugin-api)
@@ -14,12 +13,15 @@ For detailed setup instructions and the complete reference, see the full documen
 - [Custom agent](docs/index.md#custom-agent)
 - [Tools](docs/index.md#tools)
 - [Conversations and persistence](docs/index.md#conversations-and-persistence)
+- [Conversation resource](docs/index.md#conversation-resource)
 
 **Full documentation:** [docs/index.md](docs/index.md)
 
 ## Requirements
 
-This package uses [Laravel AI](https://github.com/laravel/ai) to communicate with AI providers. You must install and configure Laravel AI first.
+- PHP 8.2+
+- Filament 4.x or 5.x
+- [Laravel AI](https://github.com/laravel/ai) (installed automatically as a dependency)
 
 ## Quick Start
 
@@ -29,16 +31,16 @@ Install the package:
 composer require wotz/filament-chatbot
 ```
 
-Publish and run the Laravel AI migrations (required for conversation storage):
+Publish and run the migrations:
 
 ```bash
-php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
+php artisan vendor:publish --tag="filament-chatbot-migrations"
 php artisan migrate
 ```
 
-In `config/ai.php`, add the API key for your chosen provider. The chatbot will use whichever provider is set as `default` in that file.
+Configure your AI provider in `config/ai.php` by adding the API key for your chosen provider. The chatbot uses whichever provider is set as `default` in that file.
 
-Publish the chatbot config:
+Optionally, publish the chatbot config to customize defaults:
 
 ```bash
 php artisan vendor:publish --tag="filament-chatbot-config"

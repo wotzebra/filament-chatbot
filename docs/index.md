@@ -6,7 +6,7 @@
 
 It uses Laravel AI for model/provider integration, persists conversation data, and exposes a panel plugin API to customize behavior and UI.
 
-Supported Filament versions: `3.x`, `4.x`, and `5.x`.
+Supported Filament versions: `4.x` and `5.x`.
 
 ## Installation
 
@@ -66,6 +66,7 @@ Available methods:
 | `chatWidth()` | `string\|Closure` | Any CSS value (px, rem, …) |
 | `chatHeight()` | `string\|Closure` | Any CSS value (px, rem, …) |
 | `logoUrl()` | `string\|Closure\|null` | Custom logo shown next to bot messages |
+| `userModel()` | `string\|Closure` | Eloquent model for the conversation user (defaults to auth provider model) |
 
 ### The `enabled` option
 
@@ -87,14 +88,14 @@ All values can be overridden per panel using the `ChatbotPlugin` fluent API.
 
 ### Supported environment variables
 
-| Variable | Config key | Default |
-|---|---|---|
-| `FILAMENT_CHATBOT_ENABLED` | `enabled` | `true` |
-| `FILAMENT_CHATBOT_PROVIDER` | `provider` | `openai` |
-| `FILAMENT_CHATBOT_MODEL` | `model` | `gpt-4o-mini` |
-| `FILAMENT_CHATBOT_TIMEOUT` | `timeout` | `60` |
+| Variable | Config key | Default | Description |
+|---|---|---|---|
+| `FILAMENT_CHATBOT_ENABLED` | `enabled` | `null` | `null` = authenticated users only, `true` = always, `false` = never |
+| `FILAMENT_CHATBOT_PROVIDER` | `provider` | `null` | Falls back to the `default` provider in `config/ai.php` |
+| `FILAMENT_CHATBOT_MODEL` | `model` | `gpt-4o-mini` | The AI model to use |
+| `FILAMENT_CHATBOT_TIMEOUT` | `timeout` | `60` | Request timeout in seconds |
 
-See the published config/filament-chatbot.php file for the full list of available options.
+See the published `config/filament-chatbot.php` file for the full list of available options.
 
 ## Custom Agent
 
@@ -256,6 +257,21 @@ ChatbotPlugin::make()
     ->conversationKey(fn () => 'ai_conversation_' . auth()->user()->account_id)
 ```
 
+## Conversation Resource
+
+The package includes a Filament resource that lists all conversations for the authenticated user. It is registered automatically when the plugin is active.
+
+The resource is available at `/conversations` in your panel and shows:
+
+- Conversation title
+- User name
+- Message count
+- Created / updated timestamps
+
+Clicking a conversation opens a fullscreen view with the complete message history. From the chat widget, users can also click the expand button to open the current conversation in this fullscreen view.
+
+Conversations are scoped to the authenticated user — each user can only see and access their own conversations.
+
 ## UI Customization
 
 ### Welcome message
@@ -276,10 +292,6 @@ ChatbotPlugin::make()
     ->logoUrl(asset('images/bot-avatar.png'))
 ```
 
-### User avatar
-
-User messages display the authenticated user's avatar. The widget reads this from `auth()->user()->avatar_url`. If that attribute does not exist on your user model, the widget falls back to a generic user icon.
-
 ### Window dimensions and position
 
 The chat window defaults to 400×600px and appears in the bottom-right corner. Users can toggle the position to the left side — this preference is persisted in the session.
@@ -292,21 +304,22 @@ ChatbotPlugin::make()
 
 ## Streaming Endpoint
 
-Responses are streamed over HTTP using Server-Sent Events (SSE). The streaming route is registered automatically by the service provider.
+Responses are streamed over HTTP via a POST endpoint. The streaming route is registered automatically by the service provider at `ai/chatbot/stream` with route name `chatbot.stream`.
 
-You can customize the route in the config file:
+The middleware applied to this endpoint can be customized in the config file:
 
 ```php
-'route' => [
-    'name'       => 'chatbot.stream',
-    'path'       => 'ai/chatbot/stream/{token}',
-    'middleware' => ['auth', 'web'],
-],
+// config/filament-chatbot.php
+'route_middleware' => ['auth', 'web'],
 ```
 
-The `middleware` array controls who can access the streaming endpoint. The default `auth` middleware ensures only authenticated users can receive streamed responses. You may add additional middleware such as throttle or custom guards here.
+The default `auth` middleware ensures only authenticated users can send messages. You may add additional middleware such as `throttle` or custom guards:
 
-> **Note:** The route configuration is global. If different panels need different middleware, consider using a custom middleware that reads panel context.
+```php
+'route_middleware' => ['auth', 'web', 'throttle:30,1'],
+```
+
+The endpoint validates conversation ownership — users can only stream responses for their own conversations.
 
 ## Testing
 
