@@ -31,20 +31,13 @@ Install the package:
 composer require wotz/filament-chatbot
 ```
 
-Publish and run the migrations:
+Run the install command. This publishes the config file and migrations, and optionally runs the migrations:
 
 ```bash
-php artisan vendor:publish --tag="filament-chatbot-migrations"
-php artisan migrate
+php artisan filament-chatbot:install
 ```
 
 Configure your AI provider in `config/ai.php` by adding the API key for your chosen provider. The chatbot uses whichever provider is set as `default` in that file.
-
-Optionally, publish the chatbot config to customize defaults:
-
-```bash
-php artisan vendor:publish --tag="filament-chatbot-config"
-```
 
 Register the plugin in your Filament panel provider:
 
