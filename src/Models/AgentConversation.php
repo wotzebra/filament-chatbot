@@ -13,6 +13,7 @@ class AgentConversation extends Model
 {
     /** @use HasFactory<AgentConversationFactory> */
     use HasFactory;
+
     use HasUuids;
 
     protected $guarded = [];
