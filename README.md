@@ -1,6 +1,6 @@
 # Filament Chatbot
 
-A Filament plugin (v3, v4, v5) that adds a floating, streaming chatbot widget to your panel using Laravel AI.
+A Filament plugin (v4, v5) that adds a floating, streaming chatbot widget to your panel using Laravel AI.
 
 ## Documentation
 
@@ -17,6 +17,10 @@ For detailed setup instructions and the complete reference, see the full documen
 
 **Full documentation:** [docs/index.md](docs/index.md)
 
+## Requirements
+
+This package uses [Laravel AI](https://github.com/laravel/ai) to communicate with AI providers. You must install and configure Laravel AI first.
+
 ## Quick Start
 
 Install the package:
@@ -25,11 +29,19 @@ Install the package:
 composer require wotz/filament-chatbot
 ```
 
-Publish and run migrations:
+Publish and run the Laravel AI migrations (required for conversation storage):
 
 ```bash
-php artisan vendor:publish --tag="filament-chatbot-migrations"
+php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
 php artisan migrate
+```
+
+In `config/ai.php`, add the API key for your chosen provider. The chatbot will use whichever provider is set as `default` in that file.
+
+Publish the chatbot config:
+
+```bash
+php artisan vendor:publish --tag="filament-chatbot-config"
 ```
 
 Register the plugin in your Filament panel provider:
@@ -38,12 +50,6 @@ Register the plugin in your Filament panel provider:
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 
 $panel->plugin(ChatbotPlugin::make());
-```
-
-Optional: publish config:
-
-```bash
-php artisan vendor:publish --tag="filament-chatbot-config"
 ```
 
 ## Project Links

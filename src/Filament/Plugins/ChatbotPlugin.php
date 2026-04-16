@@ -5,6 +5,7 @@ namespace Wotz\FilamentChatbot\Filament\Plugins;
 use Closure;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
 use RuntimeException;
 
@@ -163,7 +164,7 @@ class ChatbotPlugin implements Plugin
 
     public function getBotName(): string
     {
-        return (string) $this->resolveProp($this->botName, config('filament-chatbot.bot_name'));
+        return (string) $this->resolveProp($this->botName, 'AI Assistant');
     }
 
     public function welcomeMessage(string|Closure $message): static
@@ -175,7 +176,7 @@ class ChatbotPlugin implements Plugin
 
     public function getWelcomeMessage(): string
     {
-        return (string) $this->resolveProp($this->welcomeMessage, config('filament-chatbot.welcome_message'));
+        return (string) $this->resolveProp($this->welcomeMessage, 'Hello! How can I help you?');
     }
 
     public function buttonText(string|Closure $text): static
@@ -187,7 +188,7 @@ class ChatbotPlugin implements Plugin
 
     public function getButtonText(): string
     {
-        return (string) $this->resolveProp($this->buttonText, config('filament-chatbot.button_text'));
+        return (string) $this->resolveProp($this->buttonText, 'Open chatbot');
     }
 
     public function buttonIcon(string|Closure $icon): static
@@ -199,7 +200,7 @@ class ChatbotPlugin implements Plugin
 
     public function getButtonIcon(): string
     {
-        return (string) $this->resolveProp($this->buttonIcon, config('filament-chatbot.button_icon'));
+        return (string) $this->resolveProp($this->buttonIcon, 'heroicon-o-chat-bubble-left-right');
     }
 
     public function chatWidth(string|Closure $width): static
@@ -211,7 +212,7 @@ class ChatbotPlugin implements Plugin
 
     public function getChatWidth(): string
     {
-        return (string) $this->resolveProp($this->chatWidth, config('filament-chatbot.chat_width'));
+        return (string) $this->resolveProp($this->chatWidth, '400px');
     }
 
     public function chatHeight(string|Closure $height): static
@@ -223,7 +224,7 @@ class ChatbotPlugin implements Plugin
 
     public function getChatHeight(): string
     {
-        return (string) $this->resolveProp($this->chatHeight, config('filament-chatbot.chat_height'));
+        return (string) $this->resolveProp($this->chatHeight, '600px');
     }
 
     protected function resolveProp(mixed $value, mixed $default = null): mixed
@@ -233,22 +234,11 @@ class ChatbotPlugin implements Plugin
 
     protected function resolveCurrentPanelId(): string
     {
-        $filament = filament();
-
-        $panel = match (true) {
-            method_exists($filament, 'getCurrentPanel') => $filament->getCurrentPanel(),
-            method_exists($filament, 'getCurrentOrDefaultPanel') => $filament->getCurrentOrDefaultPanel(),
-            method_exists($filament, 'getDefaultPanel') => $filament->getDefaultPanel(),
-            default => null,
-        };
-
-        return $panel?->getId() ?? 'default';
+        return filament()->getCurrentPanel()?->getId() ?? 'default';
     }
 
     protected function resolveBodyEndRenderHook(): string
     {
-        return defined(\Filament\View\PanelsRenderHook::class . '::BODY_END')
-            ? \Filament\View\PanelsRenderHook::BODY_END
-            : 'panels::body.end';
+        return PanelsRenderHook::BODY_END;
     }
 }
