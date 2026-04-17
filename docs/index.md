@@ -116,7 +116,7 @@ All other behavior (tools, provider, model, timeout, conversation memory) is inh
 
 If you need full control, you can build an agent from scratch using the Laravel AI package. Refer to the [Laravel AI SDK - Agents documentation](https://laravel.com/docs/12.x/ai-sdk#agents) for all available contracts, traits, and configuration options.
 
-A custom agent compatible with this package should implement `Conversational` (via the `RemembersConversations` trait) to enable conversation memory. The agent will reconstruct history from the database on each request. Without it, each message is handled independently.
+A custom agent compatible with this package should implement `Conversational` (via the `RemembersConversations` trait) to enable conversation memory. The package will continue the active conversation for each request; without that contract, each message is handled independently.
 
 It should also use the `UsesToolsFromConfig` trait in its `tools()` method to ensure both globally and locally registered tools are included:
 
@@ -252,20 +252,40 @@ ChatbotPlugin::make()
 
 ## Page Context
 
-The chatbot can be made aware of the page the user is currently looking at. When context is available, it is forwarded with every streamed message and prepended to the agent's instructions, so answers can reference the record or screen the user is on without the user having to describe it.
+The chatbot can be made aware of the page the user is currently looking at. When context is available, it is forwarded with every streamed message and appended to the agent's instructions, so answers can reference the record or screen the user is on without the user having to describe it.
 
 ### How it works
 
-1. A Livewire component on the page exposes context by implementing `HasChatbotContext` and using the `InteractsWithChatbot` trait.
-2. On boot, the trait dispatches a `chatbot:context-updated` browser event containing the context array.
-3. The chatbot widget listens for that event and stores the payload on its `pageContext` property.
-4. When the user submits a question, the payload is POSTed alongside the message to the streaming endpoint.
-5. The configured context resolver converts the raw array into an instruction string, which is attached to the request via the `chatbot.context` hidden context key.
-6. The agent reads that value and appends it to its instructions for the current turn.
+1. A Livewire component on the page uses the `InteractsWithChatbot` trait.
+2. If the component implements `HasChatbotContext`, that explicit payload is used.
+3. Otherwise, the trait falls back to the current Eloquent record from `getRecord()` or `$record`, if available.
+4. On boot, the trait dispatches a `chatbot:context-updated` browser event containing the context array.
+5. The chatbot widget listens for that event and stores the payload on its `pageContext` property.
+6. When the user submits a question, the payload is POSTed alongside the message to the streaming endpoint.
+7. The configured context resolver converts the raw array into an instruction string, which is attached to the request via the `chatbot.context` hidden context key.
+8. The agent reads that value and appends it to its instructions for the current turn.
+
+When the fallback record-based context is used, the payload comes from the model's `toArray()` output. That means already-loaded relations are included, but the package does not automatically eager load additional relations for you.
+
+### Automatic context on Filament record pages
+
+For most Filament `ViewRecord`, `EditRecord`, and similar pages, using the trait is enough:
+
+```php
+use Filament\Resources\Pages\ViewRecord;
+use Wotz\FilamentChatbot\Livewire\Concerns\InteractsWithChatbot;
+
+class ViewOrder extends ViewRecord
+{
+    use InteractsWithChatbot;
+}
+```
+
+If the page has a current record, the chatbot receives that record as context automatically.
 
 ### Exposing context from a Livewire component
 
-Implement the `HasChatbotContext` contract and return an associative array describing the current page:
+If you need a custom payload instead of the automatic record fallback, implement the `HasChatbotContext` contract and return an associative array describing the current page:
 
 ```php
 use Livewire\Component;

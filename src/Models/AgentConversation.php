@@ -2,6 +2,7 @@
 
 namespace Wotz\FilamentChatbot\Models;
 
+use Illuminate\Database\Eloquent\Attributes\UseEloquentBuilder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Wotz\FilamentChatbot\Database\Factories\AgentConversationFactory;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
+use Wotz\FilamentChatbot\Models\Builders\AgentConversationBuilder;
 
+#[UseEloquentBuilder(AgentConversation::class)]
 class AgentConversation extends Model
 {
     /** @use HasFactory<AgentConversationFactory> */

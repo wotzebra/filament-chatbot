@@ -2,12 +2,15 @@
 
 namespace Wotz\FilamentChatbot\Models;
 
+use Illuminate\Database\Eloquent\Attributes\UseEloquentBuilder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Wotz\FilamentChatbot\Database\Factories\AgentConversationMessageFactory;
+use Wotz\FilamentChatbot\Models\Builders\AgentConversationMessageBuilder;
 
+#[UseEloquentBuilder(AgentConversationMessage::class)]
 class AgentConversationMessage extends Model
 {
     /** @use HasFactory<AgentConversationMessageFactory> */

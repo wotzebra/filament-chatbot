@@ -16,6 +16,18 @@ class ToolRegistry
         return $this;
     }
 
+    public function usingTools(array $toolClasses, callable $callback): mixed
+    {
+        $previousTools = $this->extraTools;
+        $this->extraTools = $toolClasses;
+
+        try {
+            return $callback();
+        } finally {
+            $this->extraTools = $previousTools;
+        }
+    }
+
     public function resolveTools(): array
     {
         $configTools = config('filament-chatbot.tools', []);

@@ -12,6 +12,8 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Wotz\FilamentChatbot\Http\Controllers\ChatStreamController;
 use Wotz\FilamentChatbot\Livewire\ChatbotConversation;
 use Wotz\FilamentChatbot\Livewire\ChatbotWidget;
+use Wotz\FilamentChatbot\Services\ChatConfig;
+use Wotz\FilamentChatbot\Services\ChatManager;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 
 class FilamentChatbotServiceProvider extends PackageServiceProvider
@@ -41,6 +43,9 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
     public function packageRegistered(): void
     {
         $this->app->singleton(ToolRegistry::class);
+        $this->app->singleton(ChatManager::class, fn ($app): ChatManager => new ChatManager(
+            ChatConfig::fromConfig(),
+        ));
     }
 
     public function packageBooted(): void

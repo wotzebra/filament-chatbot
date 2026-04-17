@@ -39,8 +39,8 @@ it('loads existing messages when the session has a conversation id', function ()
     $messages = $component->get('messages');
 
     expect($messages)->toHaveCount(2)
-        ->and($messages[0]->role)->toBe(MessageRole::User->value)
-        ->and($messages[1]->role)->toBe(MessageRole::Assistant->value);
+        ->and($messages[0]['role'])->toBe(MessageRole::User->value)
+        ->and($messages[1]['role'])->toBe(MessageRole::Assistant->value);
 });
 
 it('ignores a session conversation id that no longer exists', function () {
@@ -48,7 +48,21 @@ it('ignores a session conversation id that no longer exists', function () {
 
     $component = Livewire::test(ChatbotWidget::class);
 
-    expect($component->get('messages'))->toHaveCount(0);
+    expect($component->get('conversationId'))->toBeNull()
+        ->and($component->get('messages'))->toHaveCount(0)
+        ->and(session()->get(conversationKey()))->toBeNull();
+});
+
+it('ignores a session conversation id that is not owned by the current user', function () {
+    $conversation = AgentConversation::factory()->create(['user_id' => 999]);
+
+    session()->put(conversationKey(), $conversation->id);
+
+    $component = Livewire::actingAs($this->makeTestUser())->test(ChatbotWidget::class);
+
+    expect($component->get('conversationId'))->toBeNull()
+        ->and($component->get('messages'))->toHaveCount(0)
+        ->and(session()->get(conversationKey()))->toBeNull();
 });
 
 it('restores panel hidden state from the session on mount', function () {
@@ -85,8 +99,8 @@ it('pushes the user message and starts streaming on askQuestion', function () {
     $messages = $component->get('messages');
 
     expect($messages)->toHaveCount(1)
-        ->and($messages->first()->role)->toBe(MessageRole::User->value)
-        ->and($messages->first()->content)->toBe($question);
+        ->and($messages->first()['role'])->toBe(MessageRole::User->value)
+        ->and($messages->first()['content'])->toBe($question);
 });
 
 it('creates a conversation record and stores its id in the session on the first question', function () {
@@ -136,8 +150,8 @@ it('adds an assistant message and clears stream state on onStreamComplete', func
 
     $messages = $component->get('messages');
 
-    expect($messages->last()->role)->toBe(MessageRole::Assistant->value)
-        ->and($messages->last()->content)->toBe($reply);
+    expect($messages->last()['role'])->toBe(MessageRole::Assistant->value)
+        ->and($messages->last()['content'])->toBe($reply);
 });
 
 it('does not duplicate the assistant message when onStreamComplete is called twice', function () {
@@ -148,7 +162,7 @@ it('does not duplicate the assistant message when onStreamComplete is called twi
         ->call('onStreamComplete', $reply);
 
     $assistantMessages = $component->get('messages')
-        ->filter(fn ($m) => $m->role === MessageRole::Assistant->value);
+        ->filter(fn ($m) => $m['role'] === MessageRole::Assistant->value);
 
     expect($assistantMessages)->toHaveCount(1);
 });
@@ -165,7 +179,7 @@ it('fetches the assistant message from the database when none is passed to onStr
 
     $component = Livewire::test(ChatbotWidget::class)->call('onStreamComplete', '');
 
-    expect($component->get('messages')->last()->content)->toBe($message->content);
+    expect($component->get('messages')->last()['content'])->toBe($message['content']);
 });
 
 it('persists a streamed fallback message when the stored assistant message is empty', function () {
@@ -181,8 +195,8 @@ it('persists a streamed fallback message when the stored assistant message is em
     $component = Livewire::test(ChatbotWidget::class)
         ->call('onStreamComplete', $reply = fake()->sentence());
 
-    expect(AgentConversationMessage::query()->findOrFail($emptyMessage->id)->content)->toBe($reply)
-        ->and($component->get('messages')->last()->content)->toBe($reply);
+    expect(AgentConversationMessage::query()->findOrFail($emptyMessage->id)['content'])->toBe($reply)
+        ->and($component->get('messages')->last()['content'])->toBe($reply);
 });
 
 it('toggles the panel hidden state and persists it to the session', function () {
@@ -215,6 +229,47 @@ it('stores the page context when the chatbot:context-updated event is dispatched
     Livewire::test(ChatbotWidget::class)
         ->dispatch('chatbot:context-updated', context: $context)
         ->assertSet('pageContext', $context);
+});
+
+it('mounts in standalone mode when a conversation id is provided', function () {
+    $user = $this->makeTestUser();
+    $conversation = AgentConversation::factory()->create(['user_id' => $user->id]);
+
+    AgentConversationMessage::factory()->user()->for($conversation, 'conversation')->create();
+    AgentConversationMessage::factory()->assistant()->for($conversation, 'conversation')->create();
+
+    $component = Livewire::actingAs($user)->test(ChatbotWidget::class, ['conversationId' => $conversation->id])
+        ->assertSet('standalone', true)
+        ->assertSet('conversationId', $conversation->id)
+        ->assertSet('isStreaming', false);
+
+    expect($component->get('messages'))->toHaveCount(2);
+});
+
+it('renders the widget view without errors in standalone mode', function () {
+    $user = $this->makeTestUser();
+    $conversation = AgentConversation::factory()->create(['user_id' => $user->id]);
+
+    Livewire::actingAs($user)->test(ChatbotWidget::class, ['conversationId' => $conversation->id])
+        ->assertOk()
+        ->assertSee('chatbot-input', false);
+});
+
+it('renders the legacy chatbot-conversation alias without errors', function () {
+    $user = $this->makeTestUser();
+    $conversation = AgentConversation::factory()->create(['user_id' => $user->id]);
+
+    Livewire::actingAs($user)->test('chatbot-conversation', ['conversationId' => $conversation->id])
+        ->assertOk()
+        ->assertSee('chatbot-input', false);
+});
+
+it('aborts with 403 when accessing a standalone conversation owned by another user', function () {
+    $conversation = AgentConversation::factory()->create(['user_id' => 999]);
+    $intruder = $this->makeTestUser();
+
+    Livewire::actingAs($intruder)->test(ChatbotWidget::class, ['conversationId' => $conversation->id])
+        ->assertForbidden();
 });
 
 it('clears all chat state and removes the session key on clearChat', function () {

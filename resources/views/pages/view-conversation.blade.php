@@ -1,3 +1,3 @@
 <x-filament-panels::page>
-    @livewire('chatbot-conversation', ['conversationId' => $record->id])
+    @livewire('chatbot-widget', ['conversationId' => $record->id])
 </x-filament-panels::page>

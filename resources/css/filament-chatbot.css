@@ -6,7 +6,7 @@
 
 @source "../views/**/*.blade.php";
 
-#chatgpt-agent-window * {
+#filament-chatbot-window * {
     box-sizing: border-box;
 }
 

@@ -10,4 +10,11 @@ return [
     'open_fullscreen' => 'Open fullscreen',
     'page_context_active' => 'Page context',
     'page_context_tooltip' => 'The assistant can see context about this page.',
+    'errors' => [
+        'rate_limited' => 'The AI service is currently rate limited. Please try again in a moment.',
+        'overloaded' => 'The AI service is temporarily overloaded. Please try again shortly.',
+        'insufficient_credits' => 'The AI service ran out of credits. Please contact an administrator.',
+        'ai_failed' => 'The AI service could not process your request. Please try again.',
+        'generic' => 'Something went wrong while generating a response. Please try again.',
+    ],
 ];
