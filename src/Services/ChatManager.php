@@ -7,7 +7,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 use Wotz\FilamentChatbot\Models\AgentConversationMessage;
-use Wotz\FilamentChatbot\Services\ChatConfig;
 
 class ChatManager
 {
