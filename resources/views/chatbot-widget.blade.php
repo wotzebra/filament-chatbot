@@ -35,7 +35,33 @@
                 @endif
 
                 <div class="flex min-w-0 flex-col">
-                    <span class="text-[0.92rem] leading-none font-bold text-gray-900">{{ $name }}</span>
+                    <div class="flex min-w-0 items-center gap-2">
+                        <span class="text-[0.92rem] leading-none font-bold text-gray-900">{{ $name }}</span>
+
+                        @if (! empty($pageContext))
+                            <div x-data="{ open: false }" class="relative">
+                                <button
+                                    type="button"
+                                    @click="open = ! open"
+                                    class="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_35%,white)] bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_10%,white)] px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-[var(--color-primary-700,#075748)] uppercase"
+                                    title="{{ __('filament-chatbot::chatbot.page_context_tooltip') }}"
+                                >
+                                    <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-primary-500,#0BA284)]"></span>
+                                    {{ __('filament-chatbot::chatbot.page_context_active') }}
+                                </button>
+
+                                <div
+                                    x-show="open"
+                                    x-cloak
+                                    x-transition
+                                    @click.outside="open = false"
+                                    class="absolute top-full left-0 z-10 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"
+                                >
+                                    <pre class="max-h-64 overflow-auto p-3 text-[0.7rem] leading-4 text-gray-800">{{ json_encode($pageContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</pre>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
                     <span class="hidden truncate text-xs leading-5 text-gray-500 sm:block">{{ __('Ask a quick question or continue the conversation.') }}</span>
                 </div>
             </div>

@@ -8,4 +8,6 @@ return [
     'placeholder' => 'Send a message...',
     'send' => 'Send message',
     'open_fullscreen' => 'Open fullscreen',
+    'page_context_active' => 'Page context',
+    'page_context_tooltip' => 'The assistant can see context about this page.',
 ];
