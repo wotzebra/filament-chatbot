@@ -8,6 +8,7 @@ use Filament\Panel;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
 use RuntimeException;
+use Wotz\FilamentChatbot\Support\Chatbot\ContextResolver;
 
 class ChatbotPlugin implements Plugin
 {
@@ -38,6 +39,8 @@ class ChatbotPlugin implements Plugin
     protected string|Closure|null $logoUrl = null;
 
     protected string|Closure|null $userModel = null;
+
+    protected string|Closure|null $contextResolver = null;
 
     public static function make(): static
     {
@@ -242,6 +245,28 @@ class ChatbotPlugin implements Plugin
             $this->userModel,
             config('filament-chatbot.user_model', config('auth.providers.users.model')),
         );
+    }
+
+    public function contextResolver(string|Closure|null $resolver): static
+    {
+        $this->contextResolver = $resolver;
+
+        return $this;
+    }
+
+    public function getContextResolver(): callable
+    {
+        $resolver = $this->contextResolver;
+
+        if ($resolver instanceof Closure) {
+            return $resolver;
+        }
+
+        if (is_string($resolver) && $resolver !== '') {
+            return app($resolver);
+        }
+
+        return app(ContextResolver::class);
     }
 
     protected function resolveProp(mixed $value, mixed $default = null): mixed

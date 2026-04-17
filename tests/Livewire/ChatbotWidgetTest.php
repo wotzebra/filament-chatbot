@@ -205,6 +205,18 @@ it('toggles the window position between left and default and persists it to the 
     expect(session()->get('chatbot-win-position'))->toBe('');
 });
 
+it('mounts with an empty page context', function () {
+    Livewire::test(ChatbotWidget::class)->assertSet('pageContext', []);
+});
+
+it('stores the page context when the chatbot:context-updated event is dispatched', function () {
+    $context = ['type' => 'order', 'id' => 42];
+
+    Livewire::test(ChatbotWidget::class)
+        ->dispatch('chatbot:context-updated', context: $context)
+        ->assertSet('pageContext', $context);
+});
+
 it('clears all chat state and removes the session key on clearChat', function () {
     $component = Livewire::test(ChatbotWidget::class)
         ->set('question', fake()->sentence())

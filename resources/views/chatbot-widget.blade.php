@@ -184,6 +184,7 @@
                                 body: JSON.stringify({
                                     message: @js($streamMessage),
                                     conversation_id: @js($conversationId),
+                                    context: @js($pageContext),
                                 }),
                                 signal: this.abortController.signal,
                             });

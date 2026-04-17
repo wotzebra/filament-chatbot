@@ -2,6 +2,7 @@
 
 namespace Wotz\FilamentChatbot\Http\Controllers;
 
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
@@ -28,6 +29,9 @@ class ChatStreamController
         $chatbot = filament('chatbot');
 
         app(ToolRegistry::class)->withTools($chatbot->getTools());
+
+        $resolver = $chatbot->getContextResolver();
+        Context::addHidden('chatbot.context', $resolver($request->context(), $request));
 
         $agentClass = $chatbot->getAgentClass();
 

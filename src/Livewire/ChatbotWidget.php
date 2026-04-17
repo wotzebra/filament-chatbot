@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Laravel\Ai\Messages\MessageRole;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 
@@ -23,6 +24,9 @@ class ChatbotWidget extends Component
     public bool $isStreaming = false;
 
     public string $streamMessage = '';
+
+    /** @var array<string, mixed> */
+    public array $pageContext = [];
 
     #[Locked]
     public string $name;
@@ -172,6 +176,12 @@ class ChatbotWidget extends Component
         }
 
         session()->put('chatbot-win-position', $this->winPosition);
+    }
+
+    #[On('chatbot:context-updated')]
+    public function setPageContext(array $context = []): void
+    {
+        $this->pageContext = $context;
     }
 
     public function clearChat(): void

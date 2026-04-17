@@ -8,17 +8,19 @@ use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
 use Stringable;
+use Wotz\FilamentChatbot\Agents\Concerns\ComposesInstructionsWithContext;
 use Wotz\FilamentChatbot\Agents\Concerns\UsesToolsFromConfig;
 
 class Assistant implements Agent, Conversational, HasTools
 {
+    use ComposesInstructionsWithContext;
     use Promptable;
     use RemembersConversations;
     use UsesToolsFromConfig;
 
     public function instructions(): Stringable|string
     {
-        return (string) config('filament-chatbot.instructions');
+        return $this->composeInstructions((string) config('filament-chatbot.instructions'));
     }
 
     public function provider(): string|array|null
