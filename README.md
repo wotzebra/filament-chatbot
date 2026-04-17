@@ -19,7 +19,7 @@ For detailed setup instructions and the complete reference, see the full documen
 
 ## Requirements
 
-- PHP 8.2+
+- PHP 8.3+
 - Filament 4.x or 5.x
 - [Laravel AI](https://github.com/laravel/ai) (installed automatically as a dependency)
 
