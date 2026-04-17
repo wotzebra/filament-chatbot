@@ -6,7 +6,7 @@
 
 It uses Laravel AI for model/provider integration, persists conversation data, and exposes a panel plugin API to customize behavior and UI.
 
-Supported Filament versions: `3.x`, `4.x`, and `5.x`.
+Supported Filament versions: `4.x` and `5.x`.
 
 ## Installation
 
@@ -14,18 +14,10 @@ Supported Filament versions: `3.x`, `4.x`, and `5.x`.
 composer require wotz/filament-chatbot
 ```
 
-```bash
-php artisan vendor:publish --tag="filament-chatbot-migrations"
-```
+Run the install command. This publishes the config file and migrations, and optionally runs the migrations:
 
 ```bash
-php artisan migrate
-```
-
-Optional — publish the config file to customize defaults:
-
-```bash
-php artisan vendor:publish --tag="filament-chatbot-config"
+php artisan filament-chatbot:install
 ```
 
 ## Register the Filament Plugin
@@ -66,14 +58,15 @@ Available methods:
 | `chatWidth()` | `string\|Closure` | Any CSS value (px, rem, …) |
 | `chatHeight()` | `string\|Closure` | Any CSS value (px, rem, …) |
 | `logoUrl()` | `string\|Closure\|null` | Custom logo shown next to bot messages |
+| `userModel()` | `string\|Closure` | Eloquent model for the conversation user (defaults to auth provider model) |
 
 ### The `enabled` option
 
 The `enabled` option controls widget visibility and has three meaningful states:
 
-- `true` — always render the widget (including for guests)
-- `false` — never render the widget
-- `null` — only render for authenticated users (default fallback when not configured)
+- `true` - always render the widget (including for guests)
+- `false` - never render the widget
+- `null` - only render for authenticated users (default fallback when not configured)
 
 ## Configuration Reference
 
@@ -87,14 +80,14 @@ All values can be overridden per panel using the `ChatbotPlugin` fluent API.
 
 ### Supported environment variables
 
-| Variable | Config key | Default |
-|---|---|---|
-| `FILAMENT_CHATBOT_ENABLED` | `enabled` | `true` |
-| `FILAMENT_CHATBOT_PROVIDER` | `provider` | `openai` |
-| `FILAMENT_CHATBOT_MODEL` | `model` | `gpt-4o-mini` |
-| `FILAMENT_CHATBOT_TIMEOUT` | `timeout` | `60` |
+| Variable | Config key | Default | Description |
+|---|---|---|---|
+| `FILAMENT_CHATBOT_ENABLED` | `enabled` | `null` | `null` = authenticated users only, `true` = always, `false` = never |
+| `FILAMENT_CHATBOT_PROVIDER` | `provider` | `null` | Falls back to the `default` provider in `config/ai.php` |
+| `FILAMENT_CHATBOT_MODEL` | `model` | `gpt-4o-mini` | The AI model to use |
+| `FILAMENT_CHATBOT_TIMEOUT` | `timeout` | `60` | Request timeout in seconds |
 
-See the published config/filament-chatbot.php file for the full list of available options.
+See the published `config/filament-chatbot.php` file for the full list of available options.
 
 ## Custom Agent
 
@@ -120,9 +113,9 @@ All other behavior (tools, provider, model, timeout, conversation memory) is inh
 
 ### Building a fully custom agent
 
-If you need full control, you can build an agent from scratch using the Laravel AI package. Refer to the [Laravel AI SDK — Agents documentation](https://laravel.com/docs/12.x/ai-sdk#agents) for all available contracts, traits, and configuration options.
+If you need full control, you can build an agent from scratch using the Laravel AI package. Refer to the [Laravel AI SDK - Agents documentation](https://laravel.com/docs/12.x/ai-sdk#agents) for all available contracts, traits, and configuration options.
 
-A custom agent compatible with this package should implement `Conversational` (via the `RemembersConversations` trait) to enable conversation memory — the agent will reconstruct history from the database on each request. Without it, each message is handled independently.
+A custom agent compatible with this package should implement `Conversational` (via the `RemembersConversations` trait) to enable conversation memory. The agent will reconstruct history from the database on each request. Without it, each message is handled independently.
 
 It should also use the `UsesToolsFromConfig` trait in its `tools()` method to ensure both globally and locally registered tools are included:
 
@@ -153,7 +146,7 @@ ChatbotPlugin::make()->agent(\App\Ai\Agents\SupportAgent::class)
 
 ## Tools
 
-Tools allow the chatbot to perform actions during a conversation — such as looking up data, calling APIs, or executing logic. Each tool is a class that implements `Laravel\Ai\Contracts\Tool`.
+Tools allow the chatbot to perform actions during a conversation, such as looking up data, calling APIs, or executing logic. Each tool is a class that implements `Laravel\Ai\Contracts\Tool`.
 
 Tools are instantiated through the service container, so constructor dependencies are automatically injected.
 
@@ -167,9 +160,9 @@ php artisan make:tool LookupOrderTool
 
 Implement the required methods in the generated class:
 
-- `description()` — explains to the AI what the tool does
-- `schema()` — defines the input parameters the AI must provide
-- `handle()` — executes the tool and returns the result
+- `description()` - explains to the AI what the tool does
+- `schema()` - defines the input parameters the AI must provide
+- `handle()` - executes the tool and returns the result
 
 Official reference: [Laravel AI SDK - Tools](https://laravel.com/docs/12.x/ai-sdk#tools)
 
@@ -210,8 +203,8 @@ Tools registered this way are only available in that specific panel. If the same
 
 The package creates and uses two database tables:
 
-- `agent_conversations` — one row per conversation, linked to a user
-- `agent_conversation_messages` — all messages (user + assistant) belonging to a conversation
+- `agent_conversations` - one row per conversation, linked to a user
+- `agent_conversation_messages` - all messages (user + assistant) belonging to a conversation
 
 The messages table also stores internal entries such as tool calls and tool results. These are persisted for context reconstruction, but only messages with role `user` or `assistant` are shown in the widget UI.
 
@@ -256,6 +249,21 @@ ChatbotPlugin::make()
     ->conversationKey(fn () => 'ai_conversation_' . auth()->user()->account_id)
 ```
 
+## Conversation Resource
+
+The package includes a Filament resource that lists all conversations for the authenticated user. It is registered automatically when the plugin is active.
+
+The resource is available at `/conversations` in your panel and shows:
+
+- Conversation title
+- User name
+- Message count
+- Created / updated timestamps
+
+Clicking a conversation opens a fullscreen view with the complete message history. From the chat widget, users can also click the expand button to open the current conversation in this fullscreen view.
+
+Conversations are scoped to the authenticated user. Each user can only see and access their own conversations.
+
 ## UI Customization
 
 ### Welcome message
@@ -276,13 +284,9 @@ ChatbotPlugin::make()
     ->logoUrl(asset('images/bot-avatar.png'))
 ```
 
-### User avatar
-
-User messages display the authenticated user's avatar. The widget reads this from `auth()->user()->avatar_url`. If that attribute does not exist on your user model, the widget falls back to a generic user icon.
-
 ### Window dimensions and position
 
-The chat window defaults to 400×600px and appears in the bottom-right corner. Users can toggle the position to the left side — this preference is persisted in the session.
+The chat window defaults to 400×600px and appears in the bottom-right corner. Users can toggle the position to the left side. This preference is persisted in the session.
 
 ```php
 ChatbotPlugin::make()
@@ -292,21 +296,22 @@ ChatbotPlugin::make()
 
 ## Streaming Endpoint
 
-Responses are streamed over HTTP using Server-Sent Events (SSE). The streaming route is registered automatically by the service provider.
+Responses are streamed over HTTP via a POST endpoint. The streaming route is registered automatically by the service provider at `ai/chatbot/stream` with route name `chatbot.stream`.
 
-You can customize the route in the config file:
+The middleware applied to this endpoint can be customized in the config file:
 
 ```php
-'route' => [
-    'name'       => 'chatbot.stream',
-    'path'       => 'ai/chatbot/stream/{token}',
-    'middleware' => ['auth', 'web'],
-],
+// config/filament-chatbot.php
+'route_middleware' => ['auth', 'web'],
 ```
 
-The `middleware` array controls who can access the streaming endpoint. The default `auth` middleware ensures only authenticated users can receive streamed responses. You may add additional middleware such as throttle or custom guards here.
+The default `auth` middleware ensures only authenticated users can send messages. You may add additional middleware such as `throttle` or custom guards:
 
-> **Note:** The route configuration is global. If different panels need different middleware, consider using a custom middleware that reads panel context.
+```php
+'route_middleware' => ['auth', 'web', 'throttle:30,1'],
+```
+
+The endpoint validates conversation ownership. Users can only stream responses for their own conversations.
 
 ## Testing
 

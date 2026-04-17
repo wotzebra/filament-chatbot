@@ -33,6 +33,6 @@ class Assistant implements Agent, Conversational, HasTools
 
     public function timeout(): int
     {
-        return (int) config('filament-chatbot.timeout', 60);
+        return config('filament-chatbot.timeout', 60);
     }
 }

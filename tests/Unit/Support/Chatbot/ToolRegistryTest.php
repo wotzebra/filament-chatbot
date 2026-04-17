@@ -38,7 +38,7 @@ it('resolves tools added via withTools when config has none', function () {
 });
 
 it('throws when a configured tool does not implement the tool contract', function () {
-    config()->set('filament-chatbot.tools', [\stdClass::class]);
+    config()->set('filament-chatbot.tools', [stdClass::class]);
 
     expect(fn () => app(ToolRegistry::class)->resolveTools())
         ->toThrow(RuntimeException::class);

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Laravel\Ai\Messages\MessageRole;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class ChatbotWidget extends Component
@@ -15,34 +16,42 @@ class ChatbotWidget extends Component
 
     public string $question = '';
 
+    #[Locked]
     public ?string $conversationId = null;
-
-    public string $streamToken = '';
-
-    public string $streamMessage = '';
 
     public bool $isStreaming = false;
 
+    public string $streamMessage = '';
+
+    #[Locked]
     public string $name;
 
+    #[Locked]
     public string $buttonText;
 
+    #[Locked]
     public string $buttonIcon;
 
+    #[Locked]
     public string $welcomeMessage;
 
+    #[Locked]
     public string $winWidth;
 
+    #[Locked]
     public string $winHeight;
 
     public string $winPosition;
 
+    #[Locked]
     public bool $showPositionBtn;
 
     public bool $panelHidden;
 
+    #[Locked]
     public string|false $logoUrl;
 
+    #[Locked]
     public string $streamRouteBase;
 
     public function mount(): void
@@ -73,13 +82,15 @@ class ChatbotWidget extends Component
         $this->buttonText = $chatbot->getButtonText();
         $this->buttonIcon = $chatbot->getButtonIcon();
         $this->logoUrl = $chatbot->getLogoUrl() ?? false;
-        $placeholder = '__token__';
-        $routeName = (string) config('filament-chatbot.route.name', 'chatbot.stream');
-        $this->streamRouteBase = str_replace("/{$placeholder}", '', route($routeName, ['token' => $placeholder]));
+        $this->streamRouteBase = route('chatbot.stream');
     }
 
     public function askQuestion(): void
     {
+        if ($this->isStreaming) {
+            return;
+        }
+
         if (empty(trim($this->question))) {
             $this->question = '';
 
@@ -109,13 +120,29 @@ class ChatbotWidget extends Component
             session()->put($this->conversationSessionKey(), $this->conversationId);
         }
 
-        $this->streamToken = Str::random(16);
         $this->streamMessage = $message;
         $this->isStreaming = true;
     }
 
     public function onStreamComplete(string $assistantMessage = ''): void
     {
+        if ($assistantMessage !== '' && $this->conversationId) {
+            $latestAssistantMessage = DB::table('agent_conversation_messages')
+                ->where('conversation_id', $this->conversationId)
+                ->where('role', MessageRole::Assistant->value)
+                ->latest('created_at')
+                ->first(['id', 'content']);
+
+            if ($latestAssistantMessage && $latestAssistantMessage->content === '') {
+                DB::table('agent_conversation_messages')
+                    ->where('id', $latestAssistantMessage->id)
+                    ->update([
+                        'content' => $assistantMessage,
+                        'updated_at' => now(),
+                    ]);
+            }
+        }
+
         if ($assistantMessage === '' && $this->conversationId) {
             $assistantMessage = (string) DB::table('agent_conversation_messages')
                 ->where('conversation_id', $this->conversationId)
@@ -131,7 +158,6 @@ class ChatbotWidget extends Component
         }
 
         $this->isStreaming = false;
-        $this->streamToken = '';
         $this->streamMessage = '';
     }
 
@@ -152,7 +178,6 @@ class ChatbotWidget extends Component
         $this->conversationId = null;
         $this->messages = collect();
         $this->isStreaming = false;
-        $this->streamToken = '';
         $this->streamMessage = '';
     }
 

@@ -121,6 +121,18 @@ it('reuses the same conversation on subsequent questions', function () {
         ->and(AgentConversation::count())->toBe(1);
 });
 
+it('ignores new questions while a stream is already active', function () {
+    Livewire::test(ChatbotWidget::class)
+        ->set('isStreaming', true)
+        ->set('question', $question = fake()->sentence())
+        ->call('askQuestion')
+        ->assertSet('question', $question)
+        ->assertSet('streamMessage', '')
+        ->assertSet('conversationId', null);
+
+    expect(AgentConversation::count())->toBe(0);
+});
+
 it('adds an assistant message and clears stream state on onStreamComplete', function () {
     $component = Livewire::test(ChatbotWidget::class)
         ->set('question', fake()->sentence())
@@ -129,7 +141,6 @@ it('adds an assistant message and clears stream state on onStreamComplete', func
 
     $component
         ->assertSet('isStreaming', false)
-        ->assertSet('streamToken', '')
         ->assertSet('streamMessage', '');
 
     $messages = $component->get('messages');
@@ -156,11 +167,31 @@ it('fetches the assistant message from the database when none is passed to onStr
         ->for($conversation, 'conversation')
         ->create();
 
+    session()->put(filament('chatbot')->getConversationKey(), $conversation->id);
+
     $component = Livewire::test(ChatbotWidget::class)
-        ->set('conversationId', $conversation->id)
         ->call('onStreamComplete', '');
 
     expect($component->get('messages')->last()->content)->toBe($message->content);
+});
+
+it('persists a streamed fallback message when the stored assistant message is empty', function () {
+    $conversation = AgentConversation::factory()->create();
+
+    $emptyAssistantMessage = AgentConversationMessage::factory()
+        ->assistant()
+        ->for($conversation, 'conversation')
+        ->create(['content' => '']);
+
+    session()->put(filament('chatbot')->getConversationKey(), $conversation->id);
+
+    $component = Livewire::test(ChatbotWidget::class)
+        ->call('onStreamComplete', $reply = fake()->sentence());
+
+    expect(
+        AgentConversationMessage::query()->findOrFail($emptyAssistantMessage->id)->content
+    )->toBe($reply)
+        ->and($component->get('messages')->last()->content)->toBe($reply);
 });
 
 it('toggles the panel hidden state and persists it to the session', function () {
@@ -198,7 +229,6 @@ it('clears all chat state and removes the session key on clearChat', function ()
     $component
         ->assertSet('conversationId', null)
         ->assertSet('isStreaming', false)
-        ->assertSet('streamToken', '')
         ->assertSet('streamMessage', '');
 
     expect($component->get('messages'))->toHaveCount(0)

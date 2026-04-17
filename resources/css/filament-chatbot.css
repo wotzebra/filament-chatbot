@@ -1,0 +1,29 @@
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@plugin "@tailwindcss/typography";
+
+@source "../views/**/*.blade.php";
+
+#chatgpt-agent-window * {
+    box-sizing: border-box;
+}
+
+.chatbot-bubble {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.chatbot-messages::-webkit-scrollbar {
+    width: 0.25rem;
+}
+
+.chatbot-messages::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+.chatbot-messages::-webkit-scrollbar-thumb {
+    background-color: rgb(209 213 219);
+    border-radius: 9999px;
+}
