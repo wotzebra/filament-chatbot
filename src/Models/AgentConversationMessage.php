@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Wotz\FilamentChatbot\Database\Factories\AgentConversationMessageFactory;
+use Wotz\FilamentChatbot\Models\Builders\AgentConversationMessageBuilder;
 
-#[UseEloquentBuilder(AgentConversationMessage::class)]
+#[UseEloquentBuilder(AgentConversationMessageBuilder::class)]
 class AgentConversationMessage extends Model
 {
     /** @use HasFactory<AgentConversationMessageFactory> */
