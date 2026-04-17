@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Wotz\FilamentChatbot\Agents\Assistant;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
+use Wotz\FilamentChatbot\Filament\Plugins\ChatbotResourcePlugin;
 
 class FilamentTestCase extends TestCase
 {
@@ -39,7 +40,10 @@ class FilamentTestCase extends TestCase
             ->chatWidth('400px')
             ->chatHeight('600px');
 
-        $panel = Panel::make()->id('test')->plugin($this->chatbotPlugin);
+        $panel = Panel::make()
+            ->id('test')
+            ->plugin($this->chatbotPlugin)
+            ->plugin(ChatbotResourcePlugin::make());
 
         Filament::setCurrentPanel($panel);
     }

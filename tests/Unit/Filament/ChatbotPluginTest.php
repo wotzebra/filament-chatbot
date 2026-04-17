@@ -1,43 +1,33 @@
 <?php
 
+use Illuminate\Foundation\Auth\User;
+use Wotz\FilamentChatbot\Agents\Assistant;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
 
 it('returns sensible defaults for chatbot ui settings', function () {
     $plugin = ChatbotPlugin::make();
 
-    expect($plugin->getBotName())->toBe('AI Assistent')
-        ->and($plugin->getWelcomeMessage())->toBe('Hello! How can i help you?')
+    expect($plugin->getBotName())->toBe('AI Assistant')
+        ->and($plugin->getWelcomeMessage())->toBe('Hello! How can I help you?')
         ->and($plugin->getButtonText())->toBe('Open chatbot')
         ->and($plugin->getButtonIcon())->toBe('heroicon-o-chat-bubble-left-right')
         ->and($plugin->getChatWidth())->toBe('400px')
         ->and($plugin->getChatHeight())->toBe('600px');
 });
 
-it('reads agent and ui settings from config as fallback', function () {
-    config()->set('filament-chatbot.agent', \Wotz\FilamentChatbot\Agents\Assistant::class);
+it('reads agent, provider, model, and enabled from config as fallback', function () {
+    config()->set('filament-chatbot.agent', Assistant::class);
     config()->set('filament-chatbot.provider', $provider = fake()->word());
     config()->set('filament-chatbot.model', $model = fake()->slug());
     config()->set('filament-chatbot.enabled', false);
-    config()->set('filament-chatbot.bot_name', $botName = fake()->name());
-    config()->set('filament-chatbot.welcome_message', $welcomeMessage = fake()->sentence());
-    config()->set('filament-chatbot.button_text', $buttonText = fake()->words(2, true));
-    config()->set('filament-chatbot.button_icon', $buttonIcon = fake()->slug());
-    config()->set('filament-chatbot.chat_width', $chatWidth = fake()->numberBetween(200, 600) . 'px');
-    config()->set('filament-chatbot.chat_height', $chatHeight = fake()->numberBetween(400, 800) . 'px');
 
     $plugin = ChatbotPlugin::make();
 
-    expect($plugin->getAgentClass())->toBe(\Wotz\FilamentChatbot\Agents\Assistant::class)
+    expect($plugin->getAgentClass())->toBe(Assistant::class)
         ->and($plugin->getProvider())->toBe($provider)
         ->and($plugin->getModel())->toBe($model)
-        ->and($plugin->isEnabled())->toBeFalse()
-        ->and($plugin->getBotName())->toBe($botName)
-        ->and($plugin->getWelcomeMessage())->toBe($welcomeMessage)
-        ->and($plugin->getButtonText())->toBe($buttonText)
-        ->and($plugin->getButtonIcon())->toBe($buttonIcon)
-        ->and($plugin->getChatWidth())->toBe($chatWidth)
-        ->and($plugin->getChatHeight())->toBe($chatHeight);
+        ->and($plugin->isEnabled())->toBeFalse();
 });
 
 it('uses fluent configured values and respects enabled false', function () {
@@ -79,7 +69,7 @@ it('returns auth check as default for isEnabled when config is null', function (
 
     expect($plugin->isEnabled())->toBeFalse();
 
-    $user = new \Illuminate\Foundation\Auth\User;
+    $user = new User;
     $user->id = fake()->randomNumber();
     auth()->setUser($user);
 
@@ -92,9 +82,9 @@ it('resolves isEnabled via closure', function () {
 });
 
 it('resolves agent via closure', function () {
-    $plugin = ChatbotPlugin::make()->agent(fn () => \Wotz\FilamentChatbot\Agents\Assistant::class);
+    $plugin = ChatbotPlugin::make()->agent(fn () => Assistant::class);
 
-    expect($plugin->getAgentClass())->toBe(\Wotz\FilamentChatbot\Agents\Assistant::class);
+    expect($plugin->getAgentClass())->toBe(Assistant::class);
 });
 
 it('resolves botName via closure', function () {

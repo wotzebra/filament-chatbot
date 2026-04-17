@@ -2,7 +2,13 @@
 
 namespace Wotz\FilamentChatbot\Tests;
 
+use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
+use BladeUI\Icons\BladeIconsServiceProvider;
+use Filament\FilamentServiceProvider;
+use Filament\Support\SupportServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Laravel\Ai\AiServiceProvider;
+use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Wotz\FilamentChatbot\Providers\FilamentChatbotServiceProvider;
 
@@ -20,12 +26,12 @@ class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
-            \BladeUI\Icons\BladeIconsServiceProvider::class,
-            \BladeUI\Heroicons\BladeHeroiconsServiceProvider::class,
-            \Filament\Support\SupportServiceProvider::class,
-            \Filament\FilamentServiceProvider::class,
-            \Livewire\LivewireServiceProvider::class,
-            \Laravel\Ai\AiServiceProvider::class,
+            BladeIconsServiceProvider::class,
+            BladeHeroiconsServiceProvider::class,
+            SupportServiceProvider::class,
+            FilamentServiceProvider::class,
+            LivewireServiceProvider::class,
+            AiServiceProvider::class,
             FilamentChatbotServiceProvider::class,
         ];
     }

@@ -18,8 +18,9 @@ class ToolRegistry
 
     public function resolveTools(): array
     {
-        return collect(config('filament-chatbot.tools', config('filament-chatbot.agent.tools', [])))
-            ->merge($this->extraTools)
+        $configTools = config('filament-chatbot.tools', []);
+
+        return collect([...$configTools, ...$this->extraTools])
             ->map(fn (mixed $tool) => is_object($tool) ? $tool : app($tool))
             ->each(function (mixed $tool): void {
                 if (! $tool instanceof Tool) {

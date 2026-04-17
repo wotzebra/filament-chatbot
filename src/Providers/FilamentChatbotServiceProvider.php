@@ -2,11 +2,15 @@
 
 namespace Wotz\FilamentChatbot\Providers;
 
+use Filament\Support\Assets\Css;
+use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
+use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Wotz\FilamentChatbot\Http\Controllers\ChatStreamController;
+use Wotz\FilamentChatbot\Livewire\ChatbotConversation;
 use Wotz\FilamentChatbot\Livewire\ChatbotWidget;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 
@@ -16,9 +20,22 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('filament-chatbot')
+            ->setBasePath(__DIR__ . '/../')
             ->hasConfigFile('filament-chatbot')
             ->hasViews()
-            ->hasMigration('create_agent_conversations_table');
+            ->hasTranslations()
+            ->hasMigration('create_agent_conversations_table')
+            ->hasInstallCommand(function (InstallCommand $command): void {
+                $command
+                    ->publishConfigFile()
+                    ->publishMigrations()
+                    ->askToRunMigrations()
+                    ->endWith(function (InstallCommand $command): void {
+                        $command->callSilently('filament:assets');
+
+                        $command->info('Filament assets have been published.');
+                    });
+            });
     }
 
     public function packageRegistered(): void
@@ -28,10 +45,16 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
-        Livewire::component('chatbot-widget', ChatbotWidget::class);
+        FilamentAsset::register([
+            Css::make('filament-chatbot', __DIR__ . '/../../resources/dist/filament-chatbot.css')
+                ->loadedOnRequest(),
+        ], 'wotz/filament-chatbot');
 
-        Route::get((string) config('filament-chatbot.route.path'), ChatStreamController::class)
-            ->middleware(config('filament-chatbot.route.middleware', ['auth', 'web']))
-            ->name((string) config('filament-chatbot.route.name'));
+        Livewire::component('chatbot-widget', ChatbotWidget::class);
+        Livewire::component('chatbot-conversation', ChatbotConversation::class);
+
+        Route::post('ai/chatbot/stream', ChatStreamController::class)
+            ->middleware(config('filament-chatbot.route_middleware', ['auth', 'web']))
+            ->name('chatbot.stream');
     }
 }
