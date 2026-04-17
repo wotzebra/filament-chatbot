@@ -33,6 +33,7 @@ class TestCase extends Orchestra
             LivewireServiceProvider::class,
             AiServiceProvider::class,
             FilamentChatbotServiceProvider::class,
+            TestPanelProvider::class,
         ];
     }
 

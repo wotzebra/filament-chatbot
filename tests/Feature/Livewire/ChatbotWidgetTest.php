@@ -167,8 +167,9 @@ it('fetches the assistant message from the database when none is passed to onStr
         ->for($conversation, 'conversation')
         ->create();
 
+    session()->put(filament('chatbot')->getConversationKey(), $conversation->id);
+
     $component = Livewire::test(ChatbotWidget::class)
-        ->set('conversationId', $conversation->id)
         ->call('onStreamComplete', '');
 
     expect($component->get('messages')->last()->content)->toBe($message->content);
@@ -182,8 +183,9 @@ it('persists a streamed fallback message when the stored assistant message is em
         ->for($conversation, 'conversation')
         ->create(['content' => '']);
 
+    session()->put(filament('chatbot')->getConversationKey(), $conversation->id);
+
     $component = Livewire::test(ChatbotWidget::class)
-        ->set('conversationId', $conversation->id)
         ->call('onStreamComplete', $reply = fake()->sentence());
 
     expect(
