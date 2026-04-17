@@ -100,4 +100,3 @@ it('accepts a class-string as context resolver', function () {
 
     expect($plugin->getContextResolver())->toBeInstanceOf(ContextResolver::class);
 });
-
