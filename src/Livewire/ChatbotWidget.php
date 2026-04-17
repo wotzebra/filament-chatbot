@@ -9,6 +9,7 @@ use Illuminate\View\View;
 use Laravel\Ai\Messages\MessageRole;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 
 class ChatbotWidget extends Component
 {
@@ -70,6 +71,7 @@ class ChatbotWidget extends Component
             )->map(fn ($row) => (object) ['role' => $row->role, 'content' => $row->content]);
         }
 
+        /** @var ChatbotPlugin $chatbot */
         $chatbot = filament('chatbot');
 
         $this->panelHidden = session()->get('chatbot-panel-hidden', true);
@@ -195,6 +197,9 @@ class ChatbotWidget extends Component
 
     protected function conversationSessionKey(): string
     {
-        return filament('chatbot')->getConversationKey();
+        /** @var ChatbotPlugin $chatbot */
+        $chatbot = filament('chatbot');
+
+        return $chatbot->getConversationKey();
     }
 }

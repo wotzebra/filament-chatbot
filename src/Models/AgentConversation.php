@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Wotz\FilamentChatbot\Database\Factories\AgentConversationFactory;
+use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 
 class AgentConversation extends Model
 {
@@ -20,7 +21,10 @@ class AgentConversation extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(filament('chatbot')->getUserModel(), 'user_id');
+        /** @var ChatbotPlugin $chatbot */
+        $chatbot = filament('chatbot');
+
+        return $this->belongsTo($chatbot->getUserModel(), 'user_id');
     }
 
     public function messages(): HasMany

@@ -8,6 +8,7 @@ use Illuminate\View\View;
 use Laravel\Ai\Messages\MessageRole;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 
 class ChatbotConversation extends Component
 {
@@ -48,6 +49,7 @@ class ChatbotConversation extends Component
                 ->get(['role', 'content']),
         )->map(fn ($row) => (object) ['role' => $row->role, 'content' => $row->content]);
 
+        /** @var ChatbotPlugin $chatbot */
         $chatbot = filament('chatbot');
 
         $this->logoUrl = $chatbot->getLogoUrl() ?? false;
