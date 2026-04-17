@@ -17,9 +17,7 @@ it('resolves tools from config', function () {
         ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
 });
 
-it('merges config tools with extra tools without duplicates', function () {
-    config()->set('filament-chatbot.tools', [ExampleTool::class]);
-
+it('resolves tools registered through withTools', function () {
     $tools = app(ToolRegistry::class)
         ->withTools([ExampleTool::class])
         ->resolveTools();
@@ -28,10 +26,12 @@ it('merges config tools with extra tools without duplicates', function () {
         ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
 });
 
-it('resolves tools added via withTools when config has none', function () {
-    app(ToolRegistry::class)->withTools([ExampleTool::class]);
+it('merges config tools with extra tools without duplicates', function () {
+    config()->set('filament-chatbot.tools', [ExampleTool::class]);
 
-    $tools = app(ToolRegistry::class)->resolveTools();
+    $tools = app(ToolRegistry::class)
+        ->withTools([ExampleTool::class])
+        ->resolveTools();
 
     expect($tools)->toHaveCount(1)
         ->and($tools[0])->toBeInstanceOf(ExampleTool::class);

@@ -1,6 +1,6 @@
 <?php
 
-namespace Wotz\FilamentChatbot\Tests;
+namespace Wotz\FilamentChatbot\Tests\Fakes;
 
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;

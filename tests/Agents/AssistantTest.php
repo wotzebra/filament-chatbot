@@ -5,11 +5,11 @@ use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
 
 beforeEach(function () {
-    app(ToolRegistry::class)->withTools([]);
     config()->set('filament-chatbot.tools', []);
+    app(ToolRegistry::class)->withTools([]);
 });
 
-it('uses config for instructions provider model and timeout', function () {
+it('reads instructions, provider, model and timeout from config', function () {
     config()->set('filament-chatbot.instructions', $instructions = fake()->sentence());
     config()->set('filament-chatbot.provider', $provider = fake()->word());
     config()->set('filament-chatbot.model', $model = fake()->slug());
@@ -25,11 +25,10 @@ it('uses config for instructions provider model and timeout', function () {
 
 it('deduplicates tools that appear in both config and the registry', function () {
     config()->set('filament-chatbot.tools', [ExampleTool::class]);
-
     app(ToolRegistry::class)->withTools([ExampleTool::class]);
 
-    $agent = app(Assistant::class);
+    $tools = app(Assistant::class)->tools();
 
-    expect($agent->tools())->toHaveCount(1)
-        ->and($agent->tools()[0])->toBeInstanceOf(ExampleTool::class);
+    expect($tools)->toHaveCount(1)
+        ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
 });

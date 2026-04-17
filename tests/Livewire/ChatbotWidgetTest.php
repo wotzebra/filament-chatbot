@@ -7,30 +7,34 @@ use Wotz\FilamentChatbot\Livewire\ChatbotWidget;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 use Wotz\FilamentChatbot\Models\AgentConversationMessage;
 
-it('uses the panel id as default conversation session key when none is configured', function () {
+function conversationKey(): string
+{
+    return filament('chatbot')->getConversationKey();
+}
+
+it('defaults the conversation session key to the panel id', function () {
     $panelId = filament()->getCurrentPanel()->getId();
 
     expect(ChatbotPlugin::make()->getConversationKey())->toBe("ai_chatbot_conversation_id_{$panelId}");
 });
 
-it('mounts with empty messages and no conversation when session is empty', function () {
+it('mounts with empty state when the session is empty', function () {
     Livewire::test(ChatbotWidget::class)
         ->assertSet('conversationId', null)
         ->assertSet('isStreaming', false)
         ->assertSet('panelHidden', true);
 });
 
-it('loads existing conversation messages on mount when session contains a conversation id', function () {
+it('loads existing messages when the session has a conversation id', function () {
     $conversation = AgentConversation::factory()->create();
 
     AgentConversationMessage::factory()->user()->for($conversation, 'conversation')->create();
     AgentConversationMessage::factory()->assistant()->for($conversation, 'conversation')->create();
 
-    session()->put(filament('chatbot')->getConversationKey(), $conversation->id);
+    session()->put(conversationKey(), $conversation->id);
 
-    $component = Livewire::test(ChatbotWidget::class);
-
-    $component->assertSet('conversationId', $conversation->id);
+    $component = Livewire::test(ChatbotWidget::class)
+        ->assertSet('conversationId', $conversation->id);
 
     $messages = $component->get('messages');
 
@@ -39,29 +43,27 @@ it('loads existing conversation messages on mount when session contains a conver
         ->and($messages[1]->role)->toBe(MessageRole::Assistant->value);
 });
 
-it('restores the panel open state from the session on mount', function () {
-    session()->put('chatbot-panel-hidden', false);
-
-    Livewire::test(ChatbotWidget::class)
-        ->assertSet('panelHidden', false);
-});
-
-it('restores the window position from the session on mount', function () {
-    session()->put('chatbot-win-position', 'left');
-
-    Livewire::test(ChatbotWidget::class)
-        ->assertSet('winPosition', 'left');
-});
-
-it('shows empty messages when the session references a conversation that no longer exists', function () {
-    session()->put(filament('chatbot')->getConversationKey(), fake()->uuid());
+it('ignores a session conversation id that no longer exists', function () {
+    session()->put(conversationKey(), fake()->uuid());
 
     $component = Livewire::test(ChatbotWidget::class);
 
     expect($component->get('messages'))->toHaveCount(0);
 });
 
-it('does nothing when askQuestion is called with only whitespace', function () {
+it('restores panel hidden state from the session on mount', function () {
+    session()->put('chatbot-panel-hidden', false);
+
+    Livewire::test(ChatbotWidget::class)->assertSet('panelHidden', false);
+});
+
+it('restores the window position from the session on mount', function () {
+    session()->put('chatbot-win-position', 'left');
+
+    Livewire::test(ChatbotWidget::class)->assertSet('winPosition', 'left');
+});
+
+it('does nothing when askQuestion receives only whitespace', function () {
     Livewire::test(ChatbotWidget::class)
         ->set('question', '   ')
         ->call('askQuestion')
@@ -75,9 +77,7 @@ it('does nothing when askQuestion is called with only whitespace', function () {
 it('pushes the user message and starts streaming on askQuestion', function () {
     $component = Livewire::test(ChatbotWidget::class)
         ->set('question', $question = fake()->sentence())
-        ->call('askQuestion');
-
-    $component
+        ->call('askQuestion')
         ->assertSet('question', '')
         ->assertSet('isStreaming', true)
         ->assertSet('streamMessage', $question);
@@ -89,20 +89,13 @@ it('pushes the user message and starts streaming on askQuestion', function () {
         ->and($messages->first()->content)->toBe($question);
 });
 
-it('creates a conversation record in the database on the first question', function () {
-    Livewire::test(ChatbotWidget::class)
-        ->set('question', fake()->sentence())
-        ->call('askQuestion');
-
-    expect(AgentConversation::count())->toBe(1);
-});
-
-it('stores the conversation id in the session after the first question', function () {
+it('creates a conversation record and stores its id in the session on the first question', function () {
     $component = Livewire::test(ChatbotWidget::class)
         ->set('question', fake()->sentence())
         ->call('askQuestion');
 
-    expect(session()->get(filament('chatbot')->getConversationKey()))->toBe($component->get('conversationId'));
+    expect(AgentConversation::count())->toBe(1)
+        ->and(session()->get(conversationKey()))->toBe($component->get('conversationId'));
 });
 
 it('reuses the same conversation on subsequent questions', function () {
@@ -137,9 +130,7 @@ it('adds an assistant message and clears stream state on onStreamComplete', func
     $component = Livewire::test(ChatbotWidget::class)
         ->set('question', fake()->sentence())
         ->call('askQuestion')
-        ->call('onStreamComplete', $reply = fake()->sentence());
-
-    $component
+        ->call('onStreamComplete', $reply = fake()->sentence())
         ->assertSet('isStreaming', false)
         ->assertSet('streamMessage', '');
 
@@ -149,14 +140,17 @@ it('adds an assistant message and clears stream state on onStreamComplete', func
         ->and($messages->last()->content)->toBe($reply);
 });
 
-it('does not duplicate the assistant message when onStreamComplete is called twice with the same content', function () {
+it('does not duplicate the assistant message when onStreamComplete is called twice', function () {
     $component = Livewire::test(ChatbotWidget::class)
         ->set('question', fake()->sentence())
         ->call('askQuestion')
         ->call('onStreamComplete', $reply = fake()->sentence())
         ->call('onStreamComplete', $reply);
 
-    expect($component->get('messages')->filter(fn ($m) => $m->role === MessageRole::Assistant->value))->toHaveCount(1);
+    $assistantMessages = $component->get('messages')
+        ->filter(fn ($m) => $m->role === MessageRole::Assistant->value);
+
+    expect($assistantMessages)->toHaveCount(1);
 });
 
 it('fetches the assistant message from the database when none is passed to onStreamComplete', function () {
@@ -167,10 +161,9 @@ it('fetches the assistant message from the database when none is passed to onStr
         ->for($conversation, 'conversation')
         ->create();
 
-    session()->put(filament('chatbot')->getConversationKey(), $conversation->id);
+    session()->put(conversationKey(), $conversation->id);
 
-    $component = Livewire::test(ChatbotWidget::class)
-        ->call('onStreamComplete', '');
+    $component = Livewire::test(ChatbotWidget::class)->call('onStreamComplete', '');
 
     expect($component->get('messages')->last()->content)->toBe($message->content);
 });
@@ -178,45 +171,37 @@ it('fetches the assistant message from the database when none is passed to onStr
 it('persists a streamed fallback message when the stored assistant message is empty', function () {
     $conversation = AgentConversation::factory()->create();
 
-    $emptyAssistantMessage = AgentConversationMessage::factory()
+    $emptyMessage = AgentConversationMessage::factory()
         ->assistant()
         ->for($conversation, 'conversation')
         ->create(['content' => '']);
 
-    session()->put(filament('chatbot')->getConversationKey(), $conversation->id);
+    session()->put(conversationKey(), $conversation->id);
 
     $component = Livewire::test(ChatbotWidget::class)
         ->call('onStreamComplete', $reply = fake()->sentence());
 
-    expect(
-        AgentConversationMessage::query()->findOrFail($emptyAssistantMessage->id)->content
-    )->toBe($reply)
+    expect(AgentConversationMessage::query()->findOrFail($emptyMessage->id)->content)->toBe($reply)
         ->and($component->get('messages')->last()->content)->toBe($reply);
 });
 
 it('toggles the panel hidden state and persists it to the session', function () {
-    $component = Livewire::test(ChatbotWidget::class);
+    $component = Livewire::test(ChatbotWidget::class)->assertSet('panelHidden', true);
 
-    $component->assertSet('panelHidden', true);
-
-    $component->call('togglePanel');
-    $component->assertSet('panelHidden', false);
+    $component->call('togglePanel')->assertSet('panelHidden', false);
     expect(session()->get('chatbot-panel-hidden'))->toBeFalse();
 
-    $component->call('togglePanel');
-    $component->assertSet('panelHidden', true);
+    $component->call('togglePanel')->assertSet('panelHidden', true);
     expect(session()->get('chatbot-panel-hidden'))->toBeTrue();
 });
 
 it('toggles the window position between left and default and persists it to the session', function () {
     $component = Livewire::test(ChatbotWidget::class);
 
-    $component->call('changeWinPosition');
-    $component->assertSet('winPosition', 'left');
+    $component->call('changeWinPosition')->assertSet('winPosition', 'left');
     expect(session()->get('chatbot-win-position'))->toBe('left');
 
-    $component->call('changeWinPosition');
-    $component->assertSet('winPosition', '');
+    $component->call('changeWinPosition')->assertSet('winPosition', '');
     expect(session()->get('chatbot-win-position'))->toBe('');
 });
 
@@ -224,13 +209,11 @@ it('clears all chat state and removes the session key on clearChat', function ()
     $component = Livewire::test(ChatbotWidget::class)
         ->set('question', fake()->sentence())
         ->call('askQuestion')
-        ->call('clearChat');
-
-    $component
+        ->call('clearChat')
         ->assertSet('conversationId', null)
         ->assertSet('isStreaming', false)
         ->assertSet('streamMessage', '');
 
     expect($component->get('messages'))->toHaveCount(0)
-        ->and(session()->get(filament('chatbot')->getConversationKey()))->toBeNull();
+        ->and(session()->get(conversationKey()))->toBeNull();
 });

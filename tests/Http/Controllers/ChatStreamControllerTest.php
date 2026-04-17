@@ -5,6 +5,8 @@ use Wotz\FilamentChatbot\Models\AgentConversation;
 
 beforeEach(function () {
     Assistant::fake(['Hello from the AI!']);
+
+    $this->user = $this->makeTestUser();
 });
 
 it('returns 401 for unauthenticated requests', function () {
@@ -14,24 +16,34 @@ it('returns 401 for unauthenticated requests', function () {
     ])->assertUnauthorized();
 });
 
-it('returns a streaming response for an authenticated request', function () {
-    $user = $this->makeTestUser();
-    $conversation = AgentConversation::factory()->create(['user_id' => $user->id]);
+it('streams a response for an authenticated request', function () {
+    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
 
-    $this->actingAs($user)
+    $this->actingAs($this->user)
         ->post(route('chatbot.stream'), [
             'message' => fake()->sentence(),
             'conversation_id' => $conversation->id,
         ])->assertOk();
 });
 
-it('records the prompt sent to the agent', function () {
-    $user = $this->makeTestUser();
-    $conversation = AgentConversation::factory()->create(['user_id' => $user->id]);
+it('forwards the user message to the agent', function () {
+    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
 
-    $this->actingAs($user)
+    $this->actingAs($this->user)
         ->post(route('chatbot.stream'), [
             'message' => $message = fake()->sentence(),
+            'conversation_id' => $conversation->id,
+        ]);
+
+    Assistant::assertPrompted($message);
+});
+
+it('trims whitespace from the user message before forwarding it to the agent', function () {
+    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+
+    $this->actingAs($this->user)
+        ->post(route('chatbot.stream'), [
+            'message' => '  ' . ($message = fake()->sentence()) . '  ',
             'conversation_id' => $conversation->id,
         ]);
 
@@ -41,7 +53,7 @@ it('records the prompt sent to the agent', function () {
 it('returns 403 when the conversation belongs to another user', function () {
     $conversation = AgentConversation::factory()->create(['user_id' => 999]);
 
-    $this->actingAs($this->makeTestUser())
+    $this->actingAs($this->user)
         ->postJson(route('chatbot.stream'), [
             'message' => fake()->sentence(),
             'conversation_id' => $conversation->id,
@@ -49,23 +61,18 @@ it('returns 403 when the conversation belongs to another user', function () {
 });
 
 it('returns 403 when the conversation does not exist', function () {
-    $this->actingAs($this->makeTestUser())
+    $this->actingAs($this->user)
         ->postJson(route('chatbot.stream'), [
             'message' => fake()->sentence(),
             'conversation_id' => fake()->uuid(),
         ])->assertForbidden();
 });
 
-it('returns 422 when the message is missing', function () {
-    $this->actingAs($this->makeTestUser())
-        ->postJson(route('chatbot.stream'), [
-            'conversation_id' => fake()->uuid(),
-        ])->assertUnprocessable();
-});
-
-it('returns 422 when the conversation_id is missing', function () {
-    $this->actingAs($this->makeTestUser())
-        ->postJson(route('chatbot.stream'), [
-            'message' => fake()->sentence(),
-        ])->assertUnprocessable();
-});
+it('returns 422 when a required field is missing', function (array $payload) {
+    $this->actingAs($this->user)
+        ->postJson(route('chatbot.stream'), $payload)
+        ->assertUnprocessable();
+})->with([
+    'missing message' => [['conversation_id' => '8e1a1f8d-1a2b-4c3d-9e4f-5a6b7c8d9e0f']],
+    'missing conversation_id' => [['message' => 'hello']],
+]);
