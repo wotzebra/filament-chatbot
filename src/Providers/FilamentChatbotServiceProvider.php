@@ -9,10 +9,12 @@ use Livewire\Livewire;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Wotz\FilamentChatbot\Contracts\StreamTransport;
 use Wotz\FilamentChatbot\Http\Controllers\ChatStreamController;
 use Wotz\FilamentChatbot\Livewire\ChatbotWidget;
 use Wotz\FilamentChatbot\Services\ChatConfig;
 use Wotz\FilamentChatbot\Services\ChatManager;
+use Wotz\FilamentChatbot\Streaming\TransportManager;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 
 class FilamentChatbotServiceProvider extends PackageServiceProvider
@@ -45,6 +47,12 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
         $this->app->singleton(ChatManager::class, fn ($app): ChatManager => new ChatManager(
             ChatConfig::fromConfig(),
         ));
+
+        $this->app->singleton(TransportManager::class);
+        $this->app->bind(
+            StreamTransport::class,
+            fn ($app): StreamTransport => $app->make(TransportManager::class)->driver(),
+        );
     }
 
     public function packageBooted(): void
@@ -59,5 +67,16 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
         Route::post('ai/chatbot/stream', ChatStreamController::class)
             ->middleware(config('filament-chatbot.route_middleware', ['auth', 'web']))
             ->name('chatbot.stream');
+
+        if (config('filament-chatbot.stream.transport') === 'websocket') {
+            $this->loadChannelsFrom(__DIR__ . '/../../routes/channels.php');
+        }
+    }
+
+    protected function loadChannelsFrom(string $path): void
+    {
+        if (file_exists($path)) {
+            require $path;
+        }
     }
 }

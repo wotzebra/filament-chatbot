@@ -48,10 +48,13 @@
     @endforeach
 
     @if ($isStreaming)
+        @php($streamTransport = $this->streamTransport())
         <div x-data="{
             streamingText: '',
             streamKey: @js(($conversationId ?? '') . ':' . md5($streamMessage)),
+            transport: @js($streamTransport),
             abortController: null,
+            echoChannel: null,
             finalized: false,
             get sanitizedHtml() {
                 if (! this.streamingText) {
@@ -63,10 +66,29 @@
                     .replace(/>/g, '&gt;')
                     .replace(/\n/g, '<br>');
             },
+            appendDelta(event) {
+                if (! event || typeof event !== 'object') return;
+                if (event.type === 'text_delta' && typeof event.delta === 'string') {
+                    this.streamingText += event.delta;
+                    return;
+                }
+                if (event.type !== 'text_delta' && typeof event.message === 'string' && event.message !== '') {
+                    this.streamingText = event.message;
+                }
+            },
             cleanup() {
                 if (this.abortController) {
                     this.abortController.abort();
                     this.abortController = null;
+                }
+
+                if (this.echoChannel && window.Echo) {
+                    try {
+                        window.Echo.leave(this.echoChannel);
+                    } catch (err) {
+                        console.warn('Echo leave error:', err);
+                    }
+                    this.echoChannel = null;
                 }
 
                 if (window.__filamentChatbotStreams?.[this.streamKey]) {
@@ -82,18 +104,11 @@
                 this.cleanup();
                 $wire.onStreamComplete(this.streamingText);
             },
-            async init() {
-                window.__filamentChatbotStreams ??= {};
-
-                if (window.__filamentChatbotStreams[this.streamKey]) {
-                    return;
-                }
-
-                window.__filamentChatbotStreams[this.streamKey] = true;
+            async runHttp() {
                 this.abortController = new AbortController();
 
                 try {
-                    const response = await fetch(@js($streamRouteBase), {
+                    const response = await fetch(this.transport.config.endpoint ?? @js($streamRouteBase), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -135,13 +150,7 @@
                             }
 
                             try {
-                                const event = JSON.parse(data);
-                                if (event.type === 'text_delta') {
-                                    this.streamingText += event.delta;
-                                }
-                                if (event.type !== 'text_delta' && typeof event.message === 'string' && event.message !== '') {
-                                    this.streamingText = event.message;
-                                }
+                                this.appendDelta(JSON.parse(data));
                             } catch (err) {
                                 console.warn('Stream parse error:', err);
                             }
@@ -153,6 +162,75 @@
                     console.warn('Stream fetch error:', err);
                     this.finalize();
                 }
+            },
+            async runWebsocket() {
+                if (! window.Echo) {
+                    console.warn('filament-chatbot: window.Echo is not available, falling back to HTTP SSE');
+                    await this.runHttp();
+                    return;
+                }
+
+                const channelName = this.transport.config.channel;
+                const eventName = this.transport.config.event ?? 'chatbot.stream';
+
+                if (! channelName) {
+                    console.warn('filament-chatbot: websocket transport missing channel name');
+                    this.finalize();
+                    return;
+                }
+
+                this.echoChannel = channelName;
+
+                window.Echo.private(channelName).listen('.' + eventName, (payload) => {
+                    const event = payload && payload.payload ? payload.payload : payload;
+
+                    if (event && event.type === 'done') {
+                        this.finalize();
+                        return;
+                    }
+
+                    this.appendDelta(event);
+                });
+
+                try {
+                    const response = await fetch(this.transport.config.endpoint ?? @js($streamRouteBase), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content,
+                        },
+                        body: JSON.stringify({
+                            message: @js($streamMessage),
+                            conversation_id: @js($conversationId),
+                            context: @js($pageContext),
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        console.warn('filament-chatbot: websocket trigger failed', response.status);
+                        this.finalize();
+                    }
+                } catch (err) {
+                    console.warn('Stream trigger error:', err);
+                    this.finalize();
+                }
+            },
+            async init() {
+                window.__filamentChatbotStreams ??= {};
+
+                if (window.__filamentChatbotStreams[this.streamKey]) {
+                    return;
+                }
+
+                window.__filamentChatbotStreams[this.streamKey] = true;
+
+                if (this.transport && this.transport.name === 'websocket') {
+                    await this.runWebsocket();
+                    return;
+                }
+
+                await this.runHttp();
             }
         }" x-init="init()" class="flex items-start gap-2.5">
             @if ($logoUrl && $logoUrl !== '')

@@ -2,14 +2,15 @@
 
 namespace Wotz\FilamentChatbot\Http\Controllers;
 
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Wotz\FilamentChatbot\Contracts\StreamTransport;
 use Wotz\FilamentChatbot\Facades\Chat;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Http\Requests\ChatStreamRequest;
 
 class ChatStreamController
 {
-    public function __invoke(ChatStreamRequest $request): StreamedResponse
+    public function __invoke(ChatStreamRequest $request, StreamTransport $transport): SymfonyResponse
     {
         set_time_limit(300);
 
@@ -20,13 +21,21 @@ class ChatStreamController
 
         $resolver = $chatbot->getContextResolver();
 
-        return Chat::for($request->conversationId())
+        $events = Chat::for($request->conversationId())
             ->as(auth()->user())
-            ->withAgent($chatbot->getAgentClass())
-            ->withProvider($chatbot->getProvider())
-            ->withModel($chatbot->getModel())
-            ->withTools($chatbot->getTools())
-            ->withContext($resolver($request->context(), $request))
-            ->stream($request->message());
+            ->applyOverrides([
+                'agent' => $chatbot->getAgentClass(),
+                'provider' => $chatbot->getProvider(),
+                'model' => $chatbot->getModel(),
+                'tools' => $chatbot->getTools(),
+                'context' => $resolver($request->context(), $request),
+            ])
+            ->streamEvents($request->message());
+
+        return $transport->start(
+            $request->conversationId(),
+            $request->message(),
+            $events,
+        );
     }
 }

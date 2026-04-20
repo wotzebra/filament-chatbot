@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Configurable stream transport (`http` or `websocket`). The WebSocket transport uses Laravel Reverb broadcasting to deliver streaming AI responses on private per-conversation channels, enabling realtime server-to-UI pushes alongside the existing SSE transport. Selected via `FILAMENT_CHATBOT_STREAM_TRANSPORT`; defaults to `http` for backwards compatibility.
+
 ## [0.2.0]
 
 ### Added

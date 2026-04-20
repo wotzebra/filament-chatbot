@@ -46,6 +46,9 @@
             ]
         }
     },
+    "suggest": {
+        "laravel/reverb": "Required when using the WebSocket stream transport (FILAMENT_CHATBOT_STREAM_TRANSPORT=websocket) to broadcast streaming AI responses on private per-conversation channels."
+    },
     "config": {
         "sort-packages": true,
         "allow-plugins": {

@@ -6,15 +6,8 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Context;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
-use Laravel\Ai\Exceptions\AiException;
-use Laravel\Ai\Exceptions\InsufficientCreditsException;
-use Laravel\Ai\Exceptions\ProviderOverloadedException;
-use Laravel\Ai\Exceptions\RateLimitedException;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Throwable;
 use Wotz\FilamentChatbot\Models\AgentConversationMessage;
-use Wotz\FilamentChatbot\Support\Chatbot\SseStream;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 
 class PendingChat
@@ -76,37 +69,35 @@ class PendingChat
         return $this;
     }
 
-    public function stream(string $message): StreamedResponse
+    /**
+     * Apply plugin-derived overrides in one shot. Keys are optional; missing
+     * keys leave the existing config untouched.
+     *
+     * @param  array{agent?: string, provider?: string|array|null, model?: ?string, tools?: array<int, mixed>, context?: ?string}  $overrides
+     */
+    public function applyOverrides(array $overrides): static
     {
-        $events = app(ToolRegistry::class)->usingTools($this->extraTools, function () use ($message): iterable {
-            $agent = $this->buildAgent();
+        if (! empty($overrides['agent'])) {
+            $this->withAgent($overrides['agent']);
+        }
 
-            return $agent->stream(
-                $message,
-                provider: $this->config->provider,
-                model: $this->config->model,
-            );
-        });
+        if (array_key_exists('provider', $overrides)) {
+            $this->withProvider($overrides['provider']);
+        }
 
-        return new StreamedResponse(function () use ($events): void {
-            $sse = new SseStream;
+        if (array_key_exists('model', $overrides)) {
+            $this->withModel($overrides['model']);
+        }
 
-            try {
-                foreach ($events as $event) {
-                    $sse->event((string) $event);
-                }
-            } catch (Throwable $e) {
-                report($e);
+        if (! empty($overrides['tools'])) {
+            $this->withTools($overrides['tools']);
+        }
 
-                $sse->event(['type' => 'text_delta', 'delta' => $this->friendlyMessageFor($e)]);
-            } finally {
-                $sse->done();
-            }
-        }, 200, [
-            'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
-            'X-Accel-Buffering' => 'no',
-        ]);
+        if (array_key_exists('context', $overrides)) {
+            $this->withContext($overrides['context']);
+        }
+
+        return $this;
     }
 
     public function streamEvents(string $message): iterable
@@ -162,16 +153,5 @@ class PendingChat
     protected function applyContext(): void
     {
         Context::addHidden('chatbot.context', $this->context);
-    }
-
-    protected function friendlyMessageFor(Throwable $e): string
-    {
-        return match (true) {
-            $e instanceof RateLimitedException => __('filament-chatbot::chatbot.errors.rate_limited'),
-            $e instanceof ProviderOverloadedException => __('filament-chatbot::chatbot.errors.overloaded'),
-            $e instanceof InsufficientCreditsException => __('filament-chatbot::chatbot.errors.insufficient_credits'),
-            $e instanceof AiException => __('filament-chatbot::chatbot.errors.ai_failed'),
-            default => __('filament-chatbot::chatbot.errors.generic'),
-        };
     }
 }

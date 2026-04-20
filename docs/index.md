@@ -442,6 +442,86 @@ The default `auth` middleware ensures only authenticated users can send messages
 
 The endpoint validates conversation ownership. Users can only stream responses for their own conversations.
 
+## Stream Transport
+
+The chatbot can stream AI responses to the browser over either HTTP (Server-Sent Events, the default) or WebSocket (via Laravel Reverb broadcasting). One configuration value picks the transport for both the controller and the Livewire widget.
+
+### Switching transport
+
+Set the transport in `.env` (or `config/filament-chatbot.php`):
+
+```dotenv
+FILAMENT_CHATBOT_STREAM_TRANSPORT=http        # default
+FILAMENT_CHATBOT_STREAM_TRANSPORT=websocket   # broadcast via Reverb
+```
+
+In WebSocket mode the controller dispatches a queued job that broadcasts each agent event on the private channel `chatbot.conversation.{conversationId}`, and the widget subscribes to that channel via Laravel Echo.
+
+### WebSocket setup
+
+```bash
+composer require laravel/reverb
+php artisan reverb:install
+```
+
+```dotenv
+FILAMENT_CHATBOT_STREAM_TRANSPORT=websocket
+BROADCAST_CONNECTION=reverb
+QUEUE_CONNECTION=database
+```
+
+> Use a non-`sync` queue connection. With `QUEUE_CONNECTION=sync` the broadcasting job runs inline and the HTTP request stays open for the full agent stream, which negates the benefit of the WebSocket transport.
+
+Bootstrap Echo + the Reverb client in your application's frontend (`resources/js/bootstrap.js`):
+
+```js
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
+
+window.Pusher = Pusher;
+
+window.Echo = new Echo({
+    broadcaster: 'reverb',
+    key: import.meta.env.VITE_REVERB_APP_KEY,
+    wsHost: import.meta.env.VITE_REVERB_HOST,
+    wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
+    wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
+    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+    enabledTransports: ['ws', 'wss'],
+});
+```
+
+Run the Reverb server and a queue worker alongside the web server:
+
+```bash
+php artisan reverb:start
+php artisan queue:work
+```
+
+### Environment variables
+
+| Variable | Config key | Default | Description |
+|---|---|---|---|
+| `FILAMENT_CHATBOT_STREAM_TRANSPORT` | `stream.transport` | `http` | `http` for SSE, `websocket` for Reverb broadcasting |
+| `FILAMENT_CHATBOT_BROADCASTING_CONNECTION` | `stream.websocket.connection` | `null` | Broadcasting connection name. `null` uses your default `BROADCAST_CONNECTION` |
+| `FILAMENT_CHATBOT_BROADCASTING_QUEUE` | `stream.websocket.queue` | `null` | Queue used by the streaming job. `null` falls back to the connection default |
+
+### Authorization
+
+Authorization for `chatbot.conversation.{conversationId}` is registered automatically when the WebSocket transport is active and only allows the conversation owner to subscribe.
+
+### Trade-offs
+
+| Concern | HTTP (SSE) | WebSocket (Reverb) |
+|---|---|---|
+| First-token latency | Lowest, single request | Slight overhead (job dispatch + channel connect) |
+| Infrastructure | None beyond the web server | Requires Reverb server + queue worker |
+| Proxy / load balancer compatibility | Can be buffered or terminated by proxies | Persistent connection, generally proxy-friendly |
+| Multi-tab synchronization | Each tab streams independently | Tabs subscribed to the same channel see the same stream |
+| Background pushes (outside web request) | Not possible | Supported, any code can broadcast on the channel |
+
+For more on Laravel broadcasting, see the [official docs](https://laravel.com/docs/broadcasting).
+
 ## Testing
 
 ```bash

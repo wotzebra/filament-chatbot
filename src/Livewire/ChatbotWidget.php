@@ -8,6 +8,7 @@ use Laravel\Ai\Messages\MessageRole;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Wotz\FilamentChatbot\Contracts\StreamTransport;
 use Wotz\FilamentChatbot\Facades\Chat;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 
@@ -133,6 +134,19 @@ class ChatbotWidget extends Component
 
         $this->isStreaming = false;
         $this->streamMessage = '';
+    }
+
+    /**
+     * @return array{name: string, config: array<string, mixed>}
+     */
+    public function streamTransport(): array
+    {
+        $transport = app(StreamTransport::class);
+
+        return [
+            'name' => $transport->name(),
+            'config' => $transport->clientConfig($this->conversationId ?? ''),
+        ];
     }
 
     public function changeWinPosition(): void
