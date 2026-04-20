@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0]
+
+### Added
+
+- Support for Filament v4 and v5.
+- `ChatbotResourcePlugin` - a separate plugin that registers a Filament resource for listing and viewing conversations.
+- `user_model` configuration option to associate conversations with an Eloquent user model.
+- Page context awareness - Filament pages can implement the `HasChatbotContext` contract to pass dynamic context data to the chatbot on every request.
+- `Chat` facade with a fluent `ChatManager` / `PendingChat` service layer for programmatic chat interaction.
+- `SseStream` and `ToolRegistry` support classes extracted from the controller.
+- Custom Eloquent builders for `AgentConversation` and `AgentConversationMessage` models.
+- Bundled compiled CSS (`resources/dist/filament-chatbot.css`) via Tailwind integration.
+- English language file (`resources/lang/en/chatbot.php`) for translatable UI strings.
+- `ChatbotConversation` Livewire component with a dedicated conversation detail view.
+
+### Changed
+
+- Refactored chat handling into a dedicated service layer (`ChatManager`, `PendingChat`, `ChatConfig`).
+- Split the chatbot widget Blade view into partials (`chatbot-input`, `chatbot-messages`) for better maintainability.
+
 ## [0.1.0]
 
 ### Added

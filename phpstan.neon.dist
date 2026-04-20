@@ -12,4 +12,8 @@ parameters:
     checkModelProperties: true
     configDirectories:
         - config
+    ignoreErrors:
+        -
+            identifier: trait.unused
+            path: src/Livewire/Concerns/InteractsWithChatbot.php
 

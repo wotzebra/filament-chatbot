@@ -122,19 +122,6 @@ class PendingChat
         });
     }
 
-    public function ask(string $message): string
-    {
-        return app(ToolRegistry::class)->usingTools($this->extraTools, function () use ($message): string {
-            $agent = $this->buildAgent();
-
-            return (string) $agent->ask(
-                $message,
-                provider: $this->config->provider,
-                model: $this->config->model,
-            );
-        });
-    }
-
     public function finalize(string $streamedMessage): string
     {
         $latest = AgentConversationMessage::query()

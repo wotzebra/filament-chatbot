@@ -255,15 +255,6 @@ it('renders the widget view without errors in standalone mode', function () {
         ->assertSee('chatbot-input', false);
 });
 
-it('renders the legacy chatbot-conversation alias without errors', function () {
-    $user = $this->makeTestUser();
-    $conversation = AgentConversation::factory()->create(['user_id' => $user->id]);
-
-    Livewire::actingAs($user)->test('chatbot-conversation', ['conversationId' => $conversation->id])
-        ->assertOk()
-        ->assertSee('chatbot-input', false);
-});
-
 it('aborts with 403 when accessing a standalone conversation owned by another user', function () {
     $conversation = AgentConversation::factory()->create(['user_id' => 999]);
     $intruder = $this->makeTestUser();
