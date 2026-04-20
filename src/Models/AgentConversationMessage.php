@@ -23,6 +23,7 @@ class AgentConversationMessage extends Model
 {
     /** @use HasFactory<AgentConversationMessageFactory> */
     use HasFactory;
+
     use HasUuids;
 
     protected $guarded = [];
