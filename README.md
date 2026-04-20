@@ -13,6 +13,7 @@ For detailed setup instructions and the complete reference, see the full documen
 - [Custom agent](docs/index.md#custom-agent)
 - [Tools](docs/index.md#tools)
 - [Conversations and persistence](docs/index.md#conversations-and-persistence)
+- [Page context](docs/index.md#page-context)
 - [Conversation resource](docs/index.md#conversation-resource)
 
 **Full documentation:** [docs/index.md](docs/index.md)

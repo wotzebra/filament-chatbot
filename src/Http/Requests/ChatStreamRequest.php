@@ -11,6 +11,7 @@ class ChatStreamRequest extends FormRequest
         return [
             'message' => ['required', 'string', 'max:10000'],
             'conversation_id' => ['required', 'string'],
+            'context' => ['nullable', 'array'],
         ];
     }
 
@@ -22,5 +23,13 @@ class ChatStreamRequest extends FormRequest
     public function conversationId(): string
     {
         return $this->string('conversation_id');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function context(): array
+    {
+        return (array) $this->input('context', []);
     }
 }

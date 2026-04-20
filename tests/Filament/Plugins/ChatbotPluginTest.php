@@ -1,8 +1,10 @@
 <?php
 
 use Illuminate\Foundation\Auth\User;
+use Illuminate\Http\Request;
 use Wotz\FilamentChatbot\Agents\Assistant;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
+use Wotz\FilamentChatbot\Support\Chatbot\ContextResolver;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
 
 it('returns sensible defaults for chatbot ui settings', function () {
@@ -78,4 +80,23 @@ it('resolves setters from a raw value or closure', function (string $setter, str
 it('resolves isEnabled from a closure', function () {
     expect(ChatbotPlugin::make()->enabled(fn () => true)->isEnabled())->toBeTrue()
         ->and(ChatbotPlugin::make()->enabled(fn () => false)->isEnabled())->toBeFalse();
+});
+
+it('defaults the context resolver to the ContextResolver class', function () {
+    expect(ChatbotPlugin::make()->getContextResolver())->toBeInstanceOf(ContextResolver::class);
+});
+
+it('accepts a closure as context resolver', function () {
+    $plugin = ChatbotPlugin::make()
+        ->contextResolver(fn (array $context, Request $request) => 'resolved: ' . json_encode($context));
+
+    $resolved = ($plugin->getContextResolver())(['foo' => 'bar'], Request::create('/'));
+
+    expect($resolved)->toBe('resolved: {"foo":"bar"}');
+});
+
+it('accepts a class-string as context resolver', function () {
+    $plugin = ChatbotPlugin::make()->contextResolver(ContextResolver::class);
+
+    expect($plugin->getContextResolver())->toBeInstanceOf(ContextResolver::class);
 });

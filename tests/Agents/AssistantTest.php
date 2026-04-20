@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Context;
 use Wotz\FilamentChatbot\Agents\Assistant;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
@@ -7,6 +8,7 @@ use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
 beforeEach(function () {
     config()->set('filament-chatbot.tools', []);
     app(ToolRegistry::class)->withTools([]);
+    Context::forgetHidden('chatbot.context');
 });
 
 it('reads instructions, provider, model and timeout from config', function () {
@@ -31,4 +33,27 @@ it('deduplicates tools that appear in both config and the registry', function ()
 
     expect($tools)->toHaveCount(1)
         ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
+});
+
+it('appends the resolved context from Laravel Context to the instructions', function () {
+    config()->set('filament-chatbot.instructions', 'Base instructions.');
+
+    Context::addHidden('chatbot.context', 'Current page context: {...}');
+
+    expect((string) app(Assistant::class)->instructions())
+        ->toBe("Base instructions.\n\nCurrent page context: {...}");
+});
+
+it('returns only the context when base instructions are empty', function () {
+    config()->set('filament-chatbot.instructions', '');
+
+    Context::addHidden('chatbot.context', 'Context only');
+
+    expect((string) app(Assistant::class)->instructions())->toBe('Context only');
+});
+
+it('returns only the base instructions when no context is resolved', function () {
+    config()->set('filament-chatbot.instructions', 'Base instructions.');
+
+    expect((string) app(Assistant::class)->instructions())->toBe('Base instructions.');
 });

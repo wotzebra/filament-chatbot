@@ -43,3 +43,16 @@ it('throws when a configured tool does not implement the tool contract', functio
     expect(fn () => app(ToolRegistry::class)->resolveTools())
         ->toThrow(RuntimeException::class);
 });
+
+it('restores previous extra tools after usingTools completes', function () {
+    $registry = app(ToolRegistry::class)->withTools([ExampleTool::class]);
+
+    $registry->usingTools([], function (): void {
+        expect(app(ToolRegistry::class)->resolveTools())->toHaveCount(0);
+    });
+
+    $tools = $registry->resolveTools();
+
+    expect($tools)->toHaveCount(1)
+        ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
+});
