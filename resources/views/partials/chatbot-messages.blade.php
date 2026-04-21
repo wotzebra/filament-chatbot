@@ -54,23 +54,9 @@
             streamKey: @js(($conversationId ?? '') . ':' . md5($streamMessage)),
             transport: @js($streamTransport),
             shouldStartStreamRequest: @js($shouldStartStreamRequest),
-            debugEnabled: @js(app()->environment(['local', 'testing'])),
             abortController: null,
             echoChannel: null,
             finalized: false,
-            debug(event, payload = {}) {
-                if (! this.debugEnabled) {
-                    return;
-                }
-
-                console.debug('[filament-chatbot]', event, {
-                    streamKey: this.streamKey,
-                    conversationId: @js($conversationId),
-                    transport: this.transport?.name ?? null,
-                    shouldStartStreamRequest: this.shouldStartStreamRequest,
-                    ...payload,
-                });
-            },
             get sanitizedHtml() {
                 if (! this.streamingText) {
                     return '<span style=\'color: rgb(156 163 175);\'>{{ __('filament-chatbot::chatbot.thinking') }}</span>';
@@ -93,8 +79,6 @@
                 }
             },
             cleanup() {
-                this.debug('stream.cleanup');
-
                 if (this.abortController) {
                     this.abortController.abort();
                     this.abortController = null;
@@ -115,17 +99,14 @@
             },
             finalize() {
                 if (this.finalized) {
-                    this.debug('stream.finalize-skipped');
                     return;
                 }
 
                 this.finalized = true;
-                this.debug('stream.finalize', { streamingText: this.streamingText });
                 this.cleanup();
                 $wire.onStreamComplete(this.streamingText);
             },
             async runHttp() {
-                this.debug('stream.http.start');
                 this.abortController = new AbortController();
 
                 try {
@@ -167,7 +148,6 @@
                             const data = line.slice(6);
 
                             if (data === '[DONE]') {
-                                this.debug('stream.http.done');
                                 this.finalize();
                                 return;
                             }
@@ -188,7 +168,6 @@
             },
             subscribeToWebsocket() {
                 if (! window.Echo) {
-                    this.debug('stream.websocket.missing-echo');
                     return false;
                 }
 
@@ -196,12 +175,10 @@
                 const eventName = this.transport.config.event ?? 'chatbot.stream';
 
                 if (! channelName) {
-                    this.debug('stream.websocket.missing-channel');
                     return false;
                 }
 
                 this.echoChannel = channelName;
-                this.debug('stream.websocket.subscribe', { channelName, eventName });
 
                 window.Echo.private(channelName).listen('.' + eventName, (payload) => {
                     const event = payload && payload.payload ? payload.payload : payload;
@@ -224,12 +201,10 @@
                 }
 
                 if (! this.shouldStartStreamRequest) {
-                    this.debug('stream.websocket.listen-only');
                     return;
                 }
 
                 try {
-                    this.debug('stream.websocket.trigger-request');
                     const response = await fetch(this.transport.config.endpoint ?? @js($streamRouteBase), {
                         method: 'POST',
                         headers: {
@@ -256,10 +231,8 @@
             },
             async init() {
                 window.__filamentChatbotStreams ??= {};
-                this.debug('stream.init');
 
                 if (window.__filamentChatbotStreams[this.streamKey]) {
-                    this.debug('stream.init-already-active');
                     return;
                 }
 
@@ -273,7 +246,6 @@
                 }
 
                 if (! this.shouldStartStreamRequest) {
-                    this.debug('stream.http.listen-only');
                     return;
                 }
 

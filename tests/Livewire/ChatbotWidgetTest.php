@@ -602,7 +602,6 @@ it('renders restored streams without restarting the websocket request', function
 
     Livewire::test(ChatbotWidget::class)
         ->assertSee('shouldStartStreamRequest: false,', false)
-        ->assertSee('debugEnabled: true,', false)
         ->assertSee('if (! this.shouldStartStreamRequest) {', false);
 });
 
