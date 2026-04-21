@@ -92,6 +92,12 @@ class ChatbotWidget extends Component
             $this->conversationId = $this->resolveCurrentConversationId(
                 session()->get($this->conversationSessionKey()),
             );
+
+            if ($this->conversationId !== null) {
+                $this->rememberOpenConversation($this->conversationId);
+            }
+
+            session()->put($this->conversationSessionKey(), $this->conversationId ?? '');
         }
 
         $this->loadConversation($activeStreams);
@@ -119,6 +125,8 @@ class ChatbotWidget extends Component
 
         if ($resolvedConversationId !== null && array_key_exists($resolvedConversationId, $activeStreams)) {
             $this->conversationId = $resolvedConversationId;
+            $this->rememberOpenConversation($resolvedConversationId);
+            session()->put($this->conversationSessionKey(), $resolvedConversationId);
             $this->loadConversation($activeStreams);
             $this->syncConversationList($activeStreams);
 
@@ -287,26 +295,17 @@ class ChatbotWidget extends Component
 
     protected function resolveCurrentConversationId(mixed $conversationId): ?string
     {
-        if ($conversationId === '') {
-            return null;
+        if (is_string($conversationId)) {
+            if ($conversationId === '') {
+                return null;
+            }
+
+            if (Chat::ownedBy($conversationId, auth()->user())) {
+                return $conversationId;
+            }
         }
 
-        if (is_string($conversationId) && Chat::ownedBy($conversationId, auth()->user())) {
-            $this->rememberOpenConversation($conversationId);
-
-            return $conversationId;
-        }
-
-        if ($this->openConversationIds !== []) {
-            $resolvedConversationId = $this->openConversationIds[0];
-            session()->put($this->conversationSessionKey(), $resolvedConversationId);
-
-            return $resolvedConversationId;
-        }
-
-        session()->put($this->conversationSessionKey(), '');
-
-        return null;
+        return $this->openConversationIds[0] ?? null;
     }
 
     /**
@@ -372,19 +371,17 @@ class ChatbotWidget extends Component
 
     protected function restoreActiveStream(string $message): void
     {
-        $lastMessageIndex = array_key_last($this->messages);
-        $lastMessage = $lastMessageIndex !== null ? $this->messages[$lastMessageIndex] : null;
+        $last = end($this->messages) ?: null;
 
-        if ($lastMessage !== null && $lastMessage['role'] === MessageRole::Assistant->value) {
-            $this->initialStreamingText = $lastMessage['content'];
-            unset($this->messages[$lastMessageIndex]);
-            $this->messages = array_values($this->messages);
+        if ($last !== null && $last['role'] === MessageRole::Assistant->value) {
+            $popped = array_pop($this->messages);
+            $this->initialStreamingText = $popped['content'];
+            $last = end($this->messages) ?: null;
         }
 
-        $lastMessage = $this->messages[array_key_last($this->messages)] ?? null;
-        $hasPendingUserMessage = $lastMessage !== null &&
-            $lastMessage['role'] === MessageRole::User->value &&
-            $lastMessage['content'] === $message;
+        $hasPendingUserMessage = $last !== null
+            && $last['role'] === MessageRole::User->value
+            && $last['content'] === $message;
 
         if (! $hasPendingUserMessage) {
             $this->messages[] = [
@@ -410,7 +407,7 @@ class ChatbotWidget extends Component
 
     protected function activeStreamSessionKey(): string
     {
-        return $this->conversationSessionKey() . '_active_streams';
+        return $this->chatbot()->getActiveStreamsSessionKey();
     }
 
     /**

@@ -30,9 +30,7 @@ class ChatStreamRequest extends FormRequest
 
     public function transport(): ?string
     {
-        $transport = trim((string) $this->input('transport', ''));
-
-        return $transport !== '' ? $transport : null;
+        return $this->input('transport');
     }
 
     /**

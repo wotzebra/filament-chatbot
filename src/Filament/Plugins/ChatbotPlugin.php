@@ -78,6 +78,11 @@ class ChatbotPlugin implements Plugin
         );
     }
 
+    public function getActiveStreamsSessionKey(): string
+    {
+        return $this->getConversationKey() . '_active_streams';
+    }
+
     public function register(Panel $panel): void
     {
         $panel->renderHook(

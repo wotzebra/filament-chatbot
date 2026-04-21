@@ -138,31 +138,6 @@ class PendingChat
         return $resolved;
     }
 
-    public function syncStreamedMessage(string $streamedMessage): void
-    {
-        if ($streamedMessage === '') {
-            return;
-        }
-
-        $latest = AgentConversationMessage::query()
-            ->forConversation($this->conversationId)
-            ->assistant()
-            ->latest('created_at')
-            ->first();
-
-        if ($latest === null || $latest->content === $streamedMessage) {
-            return;
-        }
-
-        $latest->update([
-            'content' => $streamedMessage,
-            'meta' => [
-                ...($latest->meta ?? []),
-                'pending' => true,
-            ],
-        ]);
-    }
-
     protected function buildAgent(): Agent
     {
         $this->applyContext();

@@ -9,7 +9,11 @@ class StreamEventNormalizer
      */
     public function decode(mixed $event): array
     {
-        $payload = (string) $event;
+        if (is_array($event)) {
+            return $event;
+        }
+
+        $payload = is_scalar($event) || $event instanceof \Stringable ? (string) $event : '';
 
         $decoded = json_decode($payload, true);
 

@@ -9,11 +9,9 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Auth;
-use Throwable;
 use Wotz\FilamentChatbot\Broadcasting\ChatbotStreamEvent;
 use Wotz\FilamentChatbot\Facades\Chat;
-use Wotz\FilamentChatbot\Support\Chatbot\FriendlyErrorMessage;
-use Wotz\FilamentChatbot\Support\Chatbot\StreamEventNormalizer;
+use Wotz\FilamentChatbot\Support\Chatbot\StreamRunner;
 
 class StreamAgentResponseJob implements ShouldQueue
 {
@@ -47,45 +45,21 @@ class StreamAgentResponseJob implements ShouldQueue
         $pending = Chat::for($this->conversationId)
             ->as($user)
             ->applyOverrides($this->overrides);
-        $normalizer = app(StreamEventNormalizer::class);
+        $runner = app(StreamRunner::class);
 
-        $streamedMessage = '';
-        $failed = false;
+        $sink = fn (array $event) => broadcast(new ChatbotStreamEvent(
+            conversationId: $this->conversationId,
+            type: (string) ($event['type'] ?? 'event'),
+            payload: $event,
+        ));
 
         try {
-            foreach ($pending->streamEvents($this->message) as $event) {
-                $decoded = $normalizer->decode($event);
-                $normalized = $normalizer->normalize($streamedMessage, $decoded);
+            $result = $runner->run($this->conversationId, $user, fn () => $pending->streamEvents($this->message), $sink);
 
-                $streamedMessage = $normalized['message'];
-
-                broadcast(new ChatbotStreamEvent(
-                    conversationId: $this->conversationId,
-                    type: (string) ($normalized['event']['type'] ?? 'event'),
-                    payload: $normalized['event'],
-                ));
+            if (! $result['failed']) {
+                $pending->finalize($result['message']);
             }
-        } catch (Throwable $e) {
-            report($e);
-
-            $failed = true;
-            $errorMessage = FriendlyErrorMessage::resolve($e);
-            $persistedContent = $streamedMessage !== ''
-                ? $streamedMessage . "\n\n" . $errorMessage
-                : $errorMessage;
-
-            Chat::addAssistantErrorMessage($this->conversationId, $user, $persistedContent);
-
-            broadcast(new ChatbotStreamEvent(
-                conversationId: $this->conversationId,
-                type: 'text_delta',
-                payload: ['type' => 'text_delta', 'delta' => $errorMessage],
-            ));
         } finally {
-            if (! $failed) {
-                $pending->finalize($streamedMessage);
-            }
-
             broadcast(new ChatbotStreamEvent(
                 conversationId: $this->conversationId,
                 type: 'done',

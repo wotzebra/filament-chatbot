@@ -74,18 +74,6 @@ class ChatManager
         );
     }
 
-    public function addPendingAssistantMessage(string $conversationId, ?Authenticatable $user, ?string $agent = null): AgentConversationMessage
-    {
-        return $this->createMessage(
-            conversationId: $conversationId,
-            user: $user,
-            role: MessageRole::Assistant->value,
-            content: '',
-            agent: $agent,
-            meta: ['pending' => true],
-        );
-    }
-
     public function addAssistantErrorMessage(string $conversationId, ?Authenticatable $user, string $content, ?string $agent = null): AgentConversationMessage
     {
         return $this->createMessage(
@@ -133,30 +121,10 @@ class ChatManager
         return AgentConversationMessage::query()
             ->whereIn('conversation_id', $conversationIds)
             ->assistant()
-            ->get(['conversation_id', 'meta'])
-            ->filter(fn (AgentConversationMessage $message): bool => (bool) ($message->meta['pending'] ?? false))
+            ->whereJsonContains('meta->pending', true)
+            ->distinct()
             ->pluck('conversation_id')
-            ->unique()
-            ->values()
             ->all();
-    }
-
-    /**
-     * @param  array<int, string>  $conversationIds
-     * @return array<string, string>
-     */
-    public function titlesFor(array $conversationIds): array
-    {
-        if ($conversationIds === []) {
-            return [];
-        }
-
-        $titles = AgentConversation::query()
-            ->whereIn('id', $conversationIds)
-            ->pluck('title', 'id')
-            ->all();
-
-        return array_intersect_key($titles, array_flip($conversationIds));
     }
 
     /**

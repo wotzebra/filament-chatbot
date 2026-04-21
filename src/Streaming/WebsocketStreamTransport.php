@@ -104,7 +104,7 @@ class WebsocketStreamTransport implements StreamTransport
             return false;
         }
 
-        $activeStreams = session()->get($chatbot->getConversationKey() . '_active_streams', []);
+        $activeStreams = session()->get($chatbot->getActiveStreamsSessionKey(), []);
 
         if (! is_array($activeStreams)) {
             return false;
