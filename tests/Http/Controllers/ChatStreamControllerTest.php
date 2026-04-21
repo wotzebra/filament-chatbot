@@ -39,7 +39,7 @@ it('forwards the user message to the agent', function () {
         ->post(route('chatbot.stream'), [
             'message' => $message = fake()->sentence(),
             'conversation_id' => $conversation->id,
-        ]);
+        ])->streamedContent();
 
     Assistant::assertPrompted($message);
 });
@@ -51,7 +51,7 @@ it('trims whitespace from the user message before forwarding it to the agent', f
         ->post(route('chatbot.stream'), [
             'message' => '  ' . ($message = fake()->sentence()) . '  ',
             'conversation_id' => $conversation->id,
-        ]);
+        ])->streamedContent();
 
     Assistant::assertPrompted($message);
 });
@@ -106,7 +106,7 @@ it('resolves context via the plugin resolver and stores it in Laravel Context', 
             'message' => fake()->sentence(),
             'conversation_id' => $conversation->id,
             'context' => ['type' => 'order', 'id' => 42],
-        ]);
+        ])->streamedContent();
 
     expect(Context::getHidden('chatbot.context'))
         ->toBe('resolved: {"type":"order","id":42}');
@@ -121,7 +121,7 @@ it('stores null in Laravel Context when no context is sent', function () {
         ->post(route('chatbot.stream'), [
             'message' => fake()->sentence(),
             'conversation_id' => $conversation->id,
-        ]);
+        ])->streamedContent();
 
     expect(Context::getHidden('chatbot.context'))->toBeNull();
 });

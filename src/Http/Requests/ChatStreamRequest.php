@@ -4,6 +4,7 @@ namespace Wotz\FilamentChatbot\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Wotz\FilamentChatbot\Streaming\TransportManager;
 
 class ChatStreamRequest extends FormRequest
 {
@@ -13,7 +14,7 @@ class ChatStreamRequest extends FormRequest
             'message' => ['required', 'string', 'max:10000'],
             'conversation_id' => ['required', 'string'],
             'context' => ['nullable', 'array'],
-            'transport' => ['nullable', 'string', Rule::in(['http', 'websocket'])],
+            'transport' => ['nullable', 'string', Rule::in(app(TransportManager::class)->supported())],
         ];
     }
 

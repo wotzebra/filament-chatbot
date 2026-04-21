@@ -2,6 +2,7 @@
 
 namespace Wotz\FilamentChatbot\Contracts;
 
+use Closure;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 interface StreamTransport
@@ -11,9 +12,13 @@ interface StreamTransport
      * controller should hand back to the frontend (a StreamedResponse for
      * the http driver, a JsonResponse for the websocket driver).
      *
-     * @param  iterable<mixed>  $events
+     * The factory is invoked only when the transport needs the event stream.
+     * The websocket driver dispatches a job that builds its own stream and
+     * never calls the factory, avoiding a wasted agent instantiation.
+     *
+     * @param  Closure(): iterable<mixed>  $eventsFactory
      */
-    public function start(string $conversationId, string $message, iterable $events): SymfonyResponse;
+    public function start(string $conversationId, string $message, Closure $eventsFactory): SymfonyResponse;
 
     /**
      * Short key the frontend uses to pick the right client implementation.

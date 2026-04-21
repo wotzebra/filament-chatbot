@@ -2,6 +2,7 @@
 
 namespace Wotz\FilamentChatbot\Streaming;
 
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -12,7 +13,7 @@ use Wotz\FilamentChatbot\Jobs\StreamAgentResponseJob;
 
 class WebsocketStreamTransport implements StreamTransport
 {
-    public function start(string $conversationId, string $message, iterable $events): SymfonyResponse
+    public function start(string $conversationId, string $message, Closure $eventsFactory): SymfonyResponse
     {
         $chatbot = $this->chatbot();
         $hasActiveDuplicateStream = $this->hasActiveDuplicateStream($chatbot, $conversationId, $message);
@@ -61,7 +62,12 @@ class WebsocketStreamTransport implements StreamTransport
             $plugin = filament('chatbot');
 
             return $plugin;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            Log::debug('filament-chatbot.websocket.plugin-unavailable', [
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+
             return null;
         }
     }

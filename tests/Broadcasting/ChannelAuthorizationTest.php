@@ -5,13 +5,7 @@ use Illuminate\Support\Facades\Broadcast;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 
 beforeEach(function () {
-    config()->set('filament-chatbot.stream.transport', 'websocket');
     config()->set('filament-chatbot.stream.websocket.channel_prefix', 'chatbot.conversation');
-
-    // The service provider only loads the channels file when transport=websocket
-    // at boot time, which happens before the test's config override. Register
-    // the channel definitions explicitly here.
-    require __DIR__ . '/../../routes/channels.php';
 });
 
 function chatbotChannelCallback(): ?Closure

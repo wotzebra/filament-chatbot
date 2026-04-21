@@ -12,8 +12,6 @@ class ChatStreamController
 {
     public function __invoke(ChatStreamRequest $request, TransportManager $transports): SymfonyResponse
     {
-        set_time_limit(300);
-
         abort_unless(Chat::ownedBy($request->conversationId(), auth()->user()), 403);
 
         /** @var ChatbotPlugin $chatbot */
@@ -21,7 +19,7 @@ class ChatStreamController
 
         $resolver = $chatbot->getContextResolver();
 
-        $events = Chat::for($request->conversationId())
+        $eventsFactory = fn (): iterable => Chat::for($request->conversationId())
             ->as(auth()->user())
             ->applyOverrides([
                 'agent' => $chatbot->getAgentClass(),
@@ -37,7 +35,7 @@ class ChatStreamController
         return $transport->start(
             $request->conversationId(),
             $request->message(),
-            $events,
+            $eventsFactory,
         );
     }
 }

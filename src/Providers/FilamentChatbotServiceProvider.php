@@ -72,15 +72,6 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
             ->middleware(config('filament-chatbot.route_middleware', ['auth', 'web']))
             ->name('chatbot.stream');
 
-        if (config('filament-chatbot.stream.transport') === 'websocket') {
-            $this->loadChannelsFrom(__DIR__ . '/../../routes/channels.php');
-        }
-    }
-
-    protected function loadChannelsFrom(string $path): void
-    {
-        if (file_exists($path)) {
-            require $path;
-        }
+        require __DIR__ . '/../../routes/channels.php';
     }
 }

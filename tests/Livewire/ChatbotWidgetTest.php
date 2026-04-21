@@ -575,8 +575,6 @@ it('renders streaming guard logic so a remounted widget skips starting a duplica
 
     $component
         ->assertSee('if (window.__filamentChatbotStreams[this.streamKey]) {', false)
-        ->assertSee('seenEventIds: [],', false)
-        ->assertSee("if (typeof event.id === 'string' && this.seenEventIds.includes(event.id)) {", false)
         ->assertSee('shouldStartStreamRequest: true,', false)
         ->assertSee('window.__filamentChatbotStreams[this.streamKey] = {', false)
         ->assertSee('cleanup: () => this.cleanup(),', false);

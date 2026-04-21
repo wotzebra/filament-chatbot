@@ -14,6 +14,14 @@ class TransportManager extends Manager
         return is_string($driver) && $driver !== '' ? $driver : 'http';
     }
 
+    /**
+     * @return array<int, string>
+     */
+    public function supported(): array
+    {
+        return ['http', 'websocket'];
+    }
+
     protected function createHttpDriver(): StreamTransport
     {
         return $this->container->make(HttpStreamTransport::class);

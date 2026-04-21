@@ -58,7 +58,6 @@
             abortController: null,
             echoChannel: null,
             finalized: false,
-            seenEventIds: [],
             debug(event, payload = {}) {
                 if (! this.debugEnabled) {
                     return;
@@ -84,14 +83,6 @@
             },
             appendDelta(event) {
                 if (! event || typeof event !== 'object') return;
-
-                if (typeof event.id === 'string' && this.seenEventIds.includes(event.id)) {
-                    return;
-                }
-
-                if (typeof event.id === 'string') {
-                    this.seenEventIds.push(event.id);
-                }
 
                 if (event.type === 'text_delta' && typeof event.delta === 'string') {
                     this.streamingText += event.delta;
