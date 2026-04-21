@@ -6,24 +6,41 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 use Wotz\FilamentChatbot\Contracts\StreamTransport;
+use Wotz\FilamentChatbot\Facades\Chat;
 use Wotz\FilamentChatbot\Support\Chatbot\FriendlyErrorMessage;
 use Wotz\FilamentChatbot\Support\Chatbot\SseStream;
+use Wotz\FilamentChatbot\Support\Chatbot\StreamEventNormalizer;
 
 class HttpStreamTransport implements StreamTransport
 {
     public function start(string $conversationId, string $message, iterable $events): SymfonyResponse
     {
-        return new StreamedResponse(function () use ($events): void {
+        $user = auth()->user();
+
+        return new StreamedResponse(function () use ($conversationId, $events, $user): void {
             $sse = new SseStream;
+            $normalizer = app(StreamEventNormalizer::class);
+            $streamedMessage = '';
 
             try {
                 foreach ($events as $event) {
-                    $sse->event((string) $event);
+                    $decoded = $normalizer->decode($event);
+                    $normalized = $normalizer->normalize($streamedMessage, $decoded);
+
+                    $streamedMessage = $normalized['message'];
+
+                    $sse->event($normalized['event']);
                 }
             } catch (Throwable $e) {
                 report($e);
 
-                $sse->event(['type' => 'text_delta', 'delta' => FriendlyErrorMessage::resolve($e)]);
+                $errorMessage = FriendlyErrorMessage::resolve($e);
+                $persistedContent = $streamedMessage !== ''
+                    ? $streamedMessage . "\n\n" . $errorMessage
+                    : $errorMessage;
+
+                $sse->event(['type' => 'text_delta', 'delta' => $errorMessage]);
+                Chat::addAssistantErrorMessage($conversationId, $user, $persistedContent);
             } finally {
                 $sse->done();
             }

@@ -3,6 +3,7 @@
 namespace Wotz\FilamentChatbot\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ChatStreamRequest extends FormRequest
 {
@@ -12,6 +13,7 @@ class ChatStreamRequest extends FormRequest
             'message' => ['required', 'string', 'max:10000'],
             'conversation_id' => ['required', 'string'],
             'context' => ['nullable', 'array'],
+            'transport' => ['nullable', 'string', Rule::in(['http', 'websocket'])],
         ];
     }
 
@@ -23,6 +25,13 @@ class ChatStreamRequest extends FormRequest
     public function conversationId(): string
     {
         return $this->string('conversation_id');
+    }
+
+    public function transport(): ?string
+    {
+        $transport = trim((string) $this->input('transport', ''));
+
+        return $transport !== '' ? $transport : null;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace Wotz\FilamentChatbot\Providers;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Route;
+use Laravel\Ai\Contracts\ConversationStore;
 use Livewire\Livewire;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
@@ -14,6 +15,7 @@ use Wotz\FilamentChatbot\Http\Controllers\ChatStreamController;
 use Wotz\FilamentChatbot\Livewire\ChatbotWidget;
 use Wotz\FilamentChatbot\Services\ChatConfig;
 use Wotz\FilamentChatbot\Services\ChatManager;
+use Wotz\FilamentChatbot\Services\IdempotentConversationStore;
 use Wotz\FilamentChatbot\Streaming\TransportManager;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 
@@ -47,6 +49,8 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
         $this->app->singleton(ChatManager::class, fn ($app): ChatManager => new ChatManager(
             ChatConfig::fromConfig(),
         ));
+
+        $this->app->singleton(ConversationStore::class, IdempotentConversationStore::class);
 
         $this->app->singleton(TransportManager::class);
         $this->app->bind(

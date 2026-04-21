@@ -1,6 +1,6 @@
 <div id="chatbot-messages" wire:scroll wire:key="chatbot-messages" class="chatbot-messages flex flex-1 flex-col gap-4 overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(15,215,175,0.08),transparent_30%),linear-gradient(180deg,rgb(249,250,251)_0%,rgb(243,244,246)_100%)] {{ $standalone ? 'px-6 py-4' : 'px-4 pt-4 pb-3.5' }}">
 
-    @if (! $standalone && $messages->isEmpty() && ! $isStreaming)
+    @if (! $standalone && $messages === [] && ! $isStreaming)
         <div class="flex flex-col items-start gap-3.5 rounded-3xl border border-gray-200 bg-white/90 p-4 shadow-[0_20px_45px_-30px_rgb(15_23_42/0.35)]">
             <div class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_15%,white)] text-[var(--color-primary-700,#075748)]">
                 <x-heroicon-m-sparkles class="h-4 w-4" />
@@ -49,13 +49,29 @@
 
     @if ($isStreaming)
         @php($streamTransport = $this->streamTransport())
-        <div x-data="{
-            streamingText: '',
+        <div wire:key="chatbot-stream-{{ ($conversationId ?? '') . ':' . md5($streamMessage) }}" x-data="{
+            streamingText: @js($initialStreamingText),
             streamKey: @js(($conversationId ?? '') . ':' . md5($streamMessage)),
             transport: @js($streamTransport),
+            shouldStartStreamRequest: @js($shouldStartStreamRequest),
+            debugEnabled: @js(app()->environment(['local', 'testing'])),
             abortController: null,
             echoChannel: null,
             finalized: false,
+            seenEventIds: [],
+            debug(event, payload = {}) {
+                if (! this.debugEnabled) {
+                    return;
+                }
+
+                console.debug('[filament-chatbot]', event, {
+                    streamKey: this.streamKey,
+                    conversationId: @js($conversationId),
+                    transport: this.transport?.name ?? null,
+                    shouldStartStreamRequest: this.shouldStartStreamRequest,
+                    ...payload,
+                });
+            },
             get sanitizedHtml() {
                 if (! this.streamingText) {
                     return '<span style=\'color: rgb(156 163 175);\'>{{ __('filament-chatbot::chatbot.thinking') }}</span>';
@@ -68,6 +84,15 @@
             },
             appendDelta(event) {
                 if (! event || typeof event !== 'object') return;
+
+                if (typeof event.id === 'string' && this.seenEventIds.includes(event.id)) {
+                    return;
+                }
+
+                if (typeof event.id === 'string') {
+                    this.seenEventIds.push(event.id);
+                }
+
                 if (event.type === 'text_delta' && typeof event.delta === 'string') {
                     this.streamingText += event.delta;
                     return;
@@ -77,6 +102,8 @@
                 }
             },
             cleanup() {
+                this.debug('stream.cleanup');
+
                 if (this.abortController) {
                     this.abortController.abort();
                     this.abortController = null;
@@ -97,14 +124,17 @@
             },
             finalize() {
                 if (this.finalized) {
+                    this.debug('stream.finalize-skipped');
                     return;
                 }
 
                 this.finalized = true;
+                this.debug('stream.finalize', { streamingText: this.streamingText });
                 this.cleanup();
                 $wire.onStreamComplete(this.streamingText);
             },
             async runHttp() {
+                this.debug('stream.http.start');
                 this.abortController = new AbortController();
 
                 try {
@@ -119,6 +149,7 @@
                             message: @js($streamMessage),
                             conversation_id: @js($conversationId),
                             context: @js($pageContext),
+                            transport: 'http',
                         }),
                         signal: this.abortController.signal,
                     });
@@ -145,6 +176,7 @@
                             const data = line.slice(6);
 
                             if (data === '[DONE]') {
+                                this.debug('stream.http.done');
                                 this.finalize();
                                 return;
                             }
@@ -163,23 +195,22 @@
                     this.finalize();
                 }
             },
-            async runWebsocket() {
+            subscribeToWebsocket() {
                 if (! window.Echo) {
-                    console.warn('filament-chatbot: window.Echo is not available, falling back to HTTP SSE');
-                    await this.runHttp();
-                    return;
+                    this.debug('stream.websocket.missing-echo');
+                    return false;
                 }
 
                 const channelName = this.transport.config.channel;
                 const eventName = this.transport.config.event ?? 'chatbot.stream';
 
                 if (! channelName) {
-                    console.warn('filament-chatbot: websocket transport missing channel name');
-                    this.finalize();
-                    return;
+                    this.debug('stream.websocket.missing-channel');
+                    return false;
                 }
 
                 this.echoChannel = channelName;
+                this.debug('stream.websocket.subscribe', { channelName, eventName });
 
                 window.Echo.private(channelName).listen('.' + eventName, (payload) => {
                     const event = payload && payload.payload ? payload.payload : payload;
@@ -192,7 +223,22 @@
                     this.appendDelta(event);
                 });
 
+                return true;
+            },
+            async runWebsocket() {
+                if (! this.subscribeToWebsocket()) {
+                    console.warn('filament-chatbot: websocket transport unavailable, falling back to HTTP SSE');
+                    await this.runHttp();
+                    return;
+                }
+
+                if (! this.shouldStartStreamRequest) {
+                    this.debug('stream.websocket.listen-only');
+                    return;
+                }
+
                 try {
+                    this.debug('stream.websocket.trigger-request');
                     const response = await fetch(this.transport.config.endpoint ?? @js($streamRouteBase), {
                         method: 'POST',
                         headers: {
@@ -204,6 +250,7 @@
                             message: @js($streamMessage),
                             conversation_id: @js($conversationId),
                             context: @js($pageContext),
+                            transport: 'websocket',
                         }),
                     });
 
@@ -218,15 +265,24 @@
             },
             async init() {
                 window.__filamentChatbotStreams ??= {};
+                this.debug('stream.init');
 
                 if (window.__filamentChatbotStreams[this.streamKey]) {
+                    this.debug('stream.init-already-active');
                     return;
                 }
 
-                window.__filamentChatbotStreams[this.streamKey] = true;
+                window.__filamentChatbotStreams[this.streamKey] = {
+                    cleanup: () => this.cleanup(),
+                };
 
                 if (this.transport && this.transport.name === 'websocket') {
                     await this.runWebsocket();
+                    return;
+                }
+
+                if (! this.shouldStartStreamRequest) {
+                    this.debug('stream.http.listen-only');
                     return;
                 }
 

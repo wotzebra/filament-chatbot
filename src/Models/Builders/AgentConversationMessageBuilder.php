@@ -16,6 +16,11 @@ class AgentConversationMessageBuilder extends Builder
         return $this->where('conversation_id', $conversationId);
     }
 
+    public function forConversationColumn(string $conversationColumn): static
+    {
+        return $this->whereColumn('conversation_id', $conversationColumn);
+    }
+
     public function visibleInChat(): static
     {
         $this->whereIn('role', [

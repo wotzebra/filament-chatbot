@@ -3,6 +3,7 @@
 namespace Wotz\FilamentChatbot\Streaming;
 
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Throwable;
 use Wotz\FilamentChatbot\Contracts\StreamTransport;
@@ -14,15 +15,20 @@ class WebsocketStreamTransport implements StreamTransport
     public function start(string $conversationId, string $message, iterable $events): SymfonyResponse
     {
         $chatbot = $this->chatbot();
+        $hasActiveDuplicateStream = $this->hasActiveDuplicateStream($chatbot, $conversationId, $message);
 
-        StreamAgentResponseJob::dispatch(
-            $conversationId,
-            $message,
-            auth()->user()?->getAuthIdentifier(),
-            $chatbot?->getUserModel(),
-            [],
-            $this->buildOverrides($chatbot),
-        );
+        if (! $hasActiveDuplicateStream) {
+            StreamAgentResponseJob::dispatch(
+                $conversationId,
+                $message,
+                auth()->user()?->getAuthIdentifier(),
+                $chatbot?->getUserModel(),
+                [],
+                $this->buildOverrides($chatbot),
+            );
+        }
+
+        $this->logStart($conversationId, $message, $hasActiveDuplicateStream);
 
         return new JsonResponse([
             'accepted' => true,
@@ -89,5 +95,38 @@ class WebsocketStreamTransport implements StreamTransport
         $request = request();
 
         return $resolver((array) $request->input('context', []), $request);
+    }
+
+    protected function hasActiveDuplicateStream(?ChatbotPlugin $chatbot, string $conversationId, string $message): bool
+    {
+        if ($chatbot === null || ! session()->isStarted()) {
+            return false;
+        }
+
+        $activeStreams = session()->get($chatbot->getConversationKey() . '_active_streams', []);
+
+        if (! is_array($activeStreams)) {
+            return false;
+        }
+
+        $activeMessage = trim((string) ($activeStreams[$conversationId]['message'] ?? ''));
+
+        return $activeMessage !== '' && $activeMessage === trim($message);
+    }
+
+    protected function logStart(string $conversationId, string $message, bool $duplicateSkipped): void
+    {
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        Log::debug('filament-chatbot.websocket.start', [
+            'conversation_id' => $conversationId,
+            'message' => $message,
+            'duplicate_skipped' => $duplicateSkipped,
+            'session_id' => session()->getId(),
+            'user_id' => auth()->user()?->getAuthIdentifier(),
+            'transport' => $this->name(),
+        ]);
     }
 }

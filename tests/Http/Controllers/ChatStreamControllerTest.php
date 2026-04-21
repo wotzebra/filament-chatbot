@@ -1,7 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Facades\Queue;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Wotz\FilamentChatbot\Agents\Assistant;
+use Wotz\FilamentChatbot\Jobs\StreamAgentResponseJob;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 
 beforeEach(function () {
@@ -121,4 +124,43 @@ it('stores null in Laravel Context when no context is sent', function () {
         ]);
 
     expect(Context::getHidden('chatbot.context'))->toBeNull();
+});
+
+it('can force the http transport when websocket is configured', function () {
+    config()->set('filament-chatbot.stream.transport', 'websocket');
+
+    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+
+    $response = $this->actingAs($this->user)
+        ->post(route('chatbot.stream'), [
+            'message' => fake()->sentence(),
+            'conversation_id' => $conversation->id,
+            'transport' => 'http',
+        ]);
+
+    $response->assertOk();
+
+    expect($response->baseResponse)
+        ->toBeInstanceOf(StreamedResponse::class)
+        ->and($response->headers->get('Content-Type'))->toContain('text/event-stream');
+});
+
+it('does not queue a duplicate websocket stream job when the same request is already active in the session', function () {
+    config()->set('filament-chatbot.stream.transport', 'websocket');
+    Queue::fake();
+
+    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+    $message = fake()->sentence();
+
+    session()->put(filament('chatbot')->getConversationKey() . '_active_streams', [
+        $conversation->id => ['message' => $message],
+    ]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('chatbot.stream'), [
+            'message' => $message,
+            'conversation_id' => $conversation->id,
+        ])->assertStatus(202);
+
+    Queue::assertNotPushed(StreamAgentResponseJob::class);
 });

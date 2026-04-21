@@ -47,10 +47,13 @@ class ChatbotStreamEvent implements ShouldBroadcast
         ];
     }
 
-    public function broadcastConnections(): ?array
+    /**
+     * @return array<int, string|null>
+     */
+    public function broadcastConnections(): array
     {
         $connection = config('filament-chatbot.stream.websocket.connection');
 
-        return $connection ? [$connection] : null;
+        return $connection ? [$connection] : [null];
     }
 }

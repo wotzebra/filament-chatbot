@@ -3,6 +3,7 @@
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Wotz\FilamentChatbot\Agents\Assistant;
 use Wotz\FilamentChatbot\Broadcasting\ChatbotStreamEvent;
@@ -67,6 +68,32 @@ it('dispatches the StreamAgentResponseJob with the conversation, message, and us
     );
 });
 
+it('does not dispatch a duplicate StreamAgentResponseJob when the same stream is already active in the session', function () {
+    Queue::fake();
+    Log::spy();
+
+    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+    $message = fake()->sentence();
+
+    session()->put(filament('chatbot')->getConversationKey() . '_active_streams', [
+        $conversation->id => ['message' => $message],
+    ]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('chatbot.stream'), [
+            'message' => $message,
+            'conversation_id' => $conversation->id,
+        ])->assertStatus(202);
+
+    Queue::assertNotPushed(StreamAgentResponseJob::class);
+
+    Log::shouldHaveReceived('debug')
+        ->withArgs(fn (string $logMessage, array $context): bool => $logMessage === 'filament-chatbot.websocket.start'
+            && $context['conversation_id'] === $conversation->id
+            && $context['duplicate_skipped'] === true)
+        ->once();
+});
+
 it('broadcasts a ChatbotStreamEvent on the private conversation channel when the job runs', function () {
     Event::fake([ChatbotStreamEvent::class]);
 
@@ -86,6 +113,30 @@ it('broadcasts a ChatbotStreamEvent on the private conversation channel when the
             && $channel instanceof PrivateChannel
             && $channel->name === 'private-chatbot.conversation.' . $conversation->id;
     });
+});
+
+it('uses the default broadcast connection when no websocket connection is configured', function () {
+    config()->set('filament-chatbot.stream.websocket.connection', null);
+
+    $event = new ChatbotStreamEvent(
+        conversationId: fake()->uuid(),
+        type: 'done',
+        payload: ['type' => 'done'],
+    );
+
+    expect($event->broadcastConnections())->toBe([null]);
+});
+
+it('uses the configured websocket broadcast connection when present', function () {
+    config()->set('filament-chatbot.stream.websocket.connection', 'reverb');
+
+    $event = new ChatbotStreamEvent(
+        conversationId: fake()->uuid(),
+        type: 'done',
+        payload: ['type' => 'done'],
+    );
+
+    expect($event->broadcastConnections())->toBe(['reverb']);
 });
 
 it('emits a final done event after the stream completes', function () {

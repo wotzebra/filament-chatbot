@@ -121,13 +121,46 @@ class PendingChat
             ->latest('created_at')
             ->first();
 
-        if ($streamedMessage !== '' && $latest && $latest->content === '') {
-            $latest->update(['content' => $streamedMessage]);
-
+        if ($latest === null) {
             return $streamedMessage;
         }
 
-        return $streamedMessage !== '' ? $streamedMessage : (string) $latest?->content;
+        $resolved = $streamedMessage !== '' ? $streamedMessage : (string) $latest->content;
+
+        $latest->update([
+            'content' => $resolved,
+            'meta' => [
+                ...($latest->meta ?? []),
+                'pending' => false,
+            ],
+        ]);
+
+        return $resolved;
+    }
+
+    public function syncStreamedMessage(string $streamedMessage): void
+    {
+        if ($streamedMessage === '') {
+            return;
+        }
+
+        $latest = AgentConversationMessage::query()
+            ->forConversation($this->conversationId)
+            ->assistant()
+            ->latest('created_at')
+            ->first();
+
+        if ($latest === null || $latest->content === $streamedMessage) {
+            return;
+        }
+
+        $latest->update([
+            'content' => $streamedMessage,
+            'meta' => [
+                ...($latest->meta ?? []),
+                'pending' => true,
+            ],
+        ]);
     }
 
     protected function buildAgent(): Agent
