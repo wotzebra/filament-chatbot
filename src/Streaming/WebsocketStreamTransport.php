@@ -87,11 +87,6 @@ class WebsocketStreamTransport implements StreamTransport
     protected function resolveContext(ChatbotPlugin $chatbot): mixed
     {
         $resolver = $chatbot->getContextResolver();
-
-        if (! is_callable($resolver)) {
-            return null;
-        }
-
         $request = request();
 
         return $resolver((array) $request->input('context', []), $request);

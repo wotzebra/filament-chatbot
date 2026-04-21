@@ -18,7 +18,9 @@ class AgentConversationMessageBuilder extends Builder
 
     public function forConversationColumn(string $conversationColumn): static
     {
-        return $this->whereColumn('conversation_id', $conversationColumn);
+        $this->whereColumn('conversation_id', $conversationColumn);
+
+        return $this;
     }
 
     public function visibleInChat(): static

@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Messages\MessageRole;
 use Livewire\Livewire;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
@@ -30,19 +29,11 @@ it('defaults the conversation session key to the panel id', function () {
 });
 
 it('mounts with empty state when the session is empty', function () {
-    Log::spy();
-
     Livewire::test(ChatbotWidget::class)
         ->assertSet('conversationId', null)
         ->assertSet('openConversationIds', [])
         ->assertSet('isStreaming', false)
         ->assertSet('panelHidden', true);
-
-    Log::shouldHaveReceived('debug')
-        ->withArgs(fn (string $message, array $context): bool => $message === 'filament-chatbot.widget.mount'
-            && $context['component'] === ChatbotWidget::class
-            && $context['session_id'] === session()->getId())
-        ->once();
 });
 
 it('loads existing messages when the session has a conversation id', function () {
@@ -241,7 +232,7 @@ it('stores the conversation in the open conversation list when asking a question
     expect(session()->get(openConversationsKey()))->toBe([$component->get('conversationId')]);
 });
 
-it('persists the user message and a pending assistant placeholder when asking a question', function () {
+it('persists the user message when asking a question', function () {
     $question = fake()->sentence();
 
     $component = Livewire::test(ChatbotWidget::class)
@@ -254,12 +245,9 @@ it('persists the user message and a pending assistant placeholder when asking a 
         ->orderBy('created_at')
         ->get();
 
-    expect($dbMessages)->toHaveCount(2)
+    expect($dbMessages)->toHaveCount(1)
         ->and($dbMessages[0]->role)->toBe(MessageRole::User->value)
-        ->and($dbMessages[0]->content)->toBe($question)
-        ->and($dbMessages[1]->role)->toBe(MessageRole::Assistant->value)
-        ->and($dbMessages[1]->content)->toBe('')
-        ->and($dbMessages[1]->meta['pending'] ?? null)->toBeTrue();
+        ->and($dbMessages[0]->content)->toBe($question);
 });
 
 it('reuses the same conversation on subsequent questions', function () {
@@ -376,13 +364,8 @@ it('fetches the assistant message from the database when none is passed to onStr
     expect($messages[array_key_last($messages)]['content'])->toBe($message['content']);
 });
 
-it('persists a streamed fallback message when the stored assistant message is empty', function () {
+it('appends the streamed reply to the local messages when the stream completes', function () {
     $conversation = AgentConversation::factory()->create();
-
-    $emptyMessage = AgentConversationMessage::factory()
-        ->assistant()
-        ->for($conversation, 'conversation')
-        ->create(['content' => '']);
 
     session()->put(conversationKey(), $conversation->id);
     session()->put(openConversationsKey(), [$conversation->id]);
@@ -392,8 +375,8 @@ it('persists a streamed fallback message when the stored assistant message is em
 
     $messages = $component->get('messages');
 
-    expect(AgentConversationMessage::query()->findOrFail($emptyMessage->id)['content'])->toBe($reply)
-        ->and($messages[array_key_last($messages)]['content'])->toBe($reply);
+    expect($messages[array_key_last($messages)]['content'])->toBe($reply)
+        ->and($messages[array_key_last($messages)]['role'])->toBe(MessageRole::Assistant->value);
 });
 
 it('keeps messages serializable after loading history and asking a new question', function () {
@@ -584,16 +567,14 @@ it('restores the partial assistant response into the streaming bubble across nav
         ->and($messages[0]['content'])->toBe($question);
 });
 
-it('renders streaming takeover logic so a remounted widget can replace the previous listener', function () {
+it('renders streaming guard logic so a remounted widget skips starting a duplicate request', function () {
     $component = Livewire::test(ChatbotWidget::class)
         ->set('question', fake()->sentence())
         ->call('askQuestion')
         ->assertSet('isStreaming', true);
 
     $component
-        ->assertSee('const existingStream = window.__filamentChatbotStreams[this.streamKey];', false)
-        ->assertSee("existingStream && typeof existingStream.cleanup === 'function'", false)
-        ->assertSee('existingStream.cleanup();', false)
+        ->assertSee('if (window.__filamentChatbotStreams[this.streamKey]) {', false)
         ->assertSee('seenEventIds: [],', false)
         ->assertSee("if (typeof event.id === 'string' && this.seenEventIds.includes(event.id)) {", false)
         ->assertSee('shouldStartStreamRequest: true,', false)

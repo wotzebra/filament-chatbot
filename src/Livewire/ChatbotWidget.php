@@ -156,8 +156,8 @@ class ChatbotWidget extends Component
         if ($resolvedConversationId === $this->conversationId) {
             $last = $this->messages[array_key_last($this->messages)] ?? null;
             $alreadyShown = $last
-                && ($last['role'] ?? null) === MessageRole::Assistant->value
-                && ($last['content'] ?? null) === $resolved;
+                && $last['role'] === MessageRole::Assistant->value
+                && $last['content'] === $resolved;
 
             if ($resolved !== '' && ! $alreadyShown) {
                 $this->messages[] = [
@@ -291,7 +291,7 @@ class ChatbotWidget extends Component
             return null;
         }
 
-        if (is_string($conversationId) && $conversationId !== '' && Chat::ownedBy($conversationId, auth()->user())) {
+        if (is_string($conversationId) && Chat::ownedBy($conversationId, auth()->user())) {
             $this->rememberOpenConversation($conversationId);
 
             return $conversationId;
@@ -375,16 +375,16 @@ class ChatbotWidget extends Component
         $lastMessageIndex = array_key_last($this->messages);
         $lastMessage = $lastMessageIndex !== null ? $this->messages[$lastMessageIndex] : null;
 
-        if ($lastMessage !== null && ($lastMessage['role'] ?? null) === MessageRole::Assistant->value) {
-            $this->initialStreamingText = (string) ($lastMessage['content'] ?? '');
+        if ($lastMessage !== null && $lastMessage['role'] === MessageRole::Assistant->value) {
+            $this->initialStreamingText = $lastMessage['content'];
             unset($this->messages[$lastMessageIndex]);
             $this->messages = array_values($this->messages);
         }
 
         $lastMessage = $this->messages[array_key_last($this->messages)] ?? null;
         $hasPendingUserMessage = $lastMessage !== null &&
-            ($lastMessage['role'] ?? null) === MessageRole::User->value &&
-            ($lastMessage['content'] ?? null) === $message;
+            $lastMessage['role'] === MessageRole::User->value &&
+            $lastMessage['content'] === $message;
 
         if (! $hasPendingUserMessage) {
             $this->messages[] = [
