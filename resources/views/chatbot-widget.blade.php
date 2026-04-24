@@ -36,18 +36,18 @@
                     @if ($logoUrl && $logoUrl !== '')
                         <img src="{{ $logoUrl }}" alt="{{ $name }}" class="h-7 w-7 shrink-0 rounded-full object-cover">
                     @else
-                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_15%,white)] text-[var(--color-primary-700,#075748)]">
+                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-(--primary-tint-15) text-(--color-primary-700,#075748)">
                             <x-heroicon-m-sparkles class="h-3.5 w-3.5" />
                         </div>
                     @endif
 
                     <div class="flex min-w-0 flex-col">
                         <div class="flex min-w-0 items-center gap-2">
-                            <span class="text-[0.92rem] leading-none font-bold text-gray-900">{{ $name }}</span>
+                            <span class="text-sm leading-none font-bold text-gray-900">{{ $name }}</span>
 
                             @if (! empty($pageContext))
                                 <span
-                                    class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_15%,white)] text-[var(--color-primary-700,#075748)]"
+                                    class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-(--primary-tint-15) text-(--color-primary-700,#075748)"
                                     title="{{ __('filament-chatbot::chatbot.page_context_tooltip') }}"
                                 >
                                     <x-heroicon-m-link class="h-3 w-3" />
@@ -98,7 +98,7 @@
                         wire:click="clearChat()"
                         @class([
                             'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition',
-                            'border-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_25%,white)] bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_10%,white)] text-[var(--color-primary-700,#075748)]' => $conversationId === null,
+                            'border-(--primary-tint-25) bg-(--primary-tint-10) text-(--color-primary-700,#075748)' => $conversationId === null,
                             'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900' => $conversationId !== null,
                         ])
                         aria-label="{{ __('filament-chatbot::chatbot.new_conversation') }}"
@@ -120,11 +120,11 @@
                     </button>
 
                     @if ($activeConversation)
-                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_10%,white)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-primary-700,#075748)]">
+                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-(--primary-tint-10) px-2.5 py-1 text-xs font-medium text-(--color-primary-700,#075748)">
                             <span class="max-w-28 truncate">{{ $activeConversation->title !== '' ? $activeConversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
 
                             @if ($isStreaming)
-                                <span class="inline-flex h-2 w-2 rounded-full bg-[var(--color-primary-500,#0BA284)]"></span>
+                                <span class="inline-flex h-2 w-2 rounded-full bg-(--color-primary-500,#0BA284)"></span>
                             @endif
                         </span>
                     @endif
@@ -136,14 +136,14 @@
                             type="button"
                             wire:click="openConversation('{{ $conversation->id }}')"
                             @class([
-                                'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition',
+                                'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition',
                                 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900',
                         ])
                     >
                             <span class="max-w-24 truncate">{{ $conversation->title !== '' ? $conversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
 
                             @if (in_array($conversation->id, $this->streamingConversationIds, true))
-                                <span class="inline-flex h-2 w-2 rounded-full bg-[var(--color-primary-500,#0BA284)]"></span>
+                                <span class="inline-flex h-2 w-2 rounded-full bg-(--color-primary-500,#0BA284)"></span>
                             @endif
                         </button>
                     @endforeach
@@ -159,12 +159,12 @@
                 >
                     <button
                         type="button"
-                        class="absolute inset-0 bg-white/55 backdrop-blur-[1px]"
+                        class="absolute inset-0 bg-white/55 backdrop-blur-sm"
                         x-on:click="showConversationBrowser = false"
                         aria-label="{{ __('filament-chatbot::chatbot.close_conversations') }}"
                     ></button>
 
-                    <aside class="relative flex h-full w-[calc(100%-0.75rem)] max-w-84 flex-col border-r border-gray-200/80 bg-white/98 shadow-[0_20px_40px_-32px_rgb(15_23_42/0.3)]">
+                    <aside class="relative flex h-full w-[calc(100%-0.75rem)] max-w-84 flex-col border-r border-gray-200/80 bg-white/98 shadow-xl">
                         <div class="flex items-center justify-between gap-3 border-b border-gray-200/70 px-4 py-3">
                             <div class="min-w-0">
                                 <div class="truncate text-sm font-semibold text-gray-900">{{ __('filament-chatbot::chatbot.conversations') }}</div>
@@ -189,11 +189,11 @@
                                         x-on:click="showConversationBrowser = false"
                                         @class([
                                             'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition',
-                                            'bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_8%,white)] text-gray-900 ring-1 ring-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_18%,white)]' => $conversation->id === $conversationId,
+                                            'bg-(--primary-tint-8) text-gray-900 ring-1 ring-(--primary-tint-18)' => $conversation->id === $conversationId,
                                             'bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900' => $conversation->id !== $conversationId,
                                         ])
                                     >
-                                        <span class="truncate text-[0.95rem] font-medium">{{ $conversation->title !== '' ? $conversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
+                                        <span class="truncate text-sm font-medium">{{ $conversation->title !== '' ? $conversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
 
                                         <span class="flex shrink-0 items-center gap-1.5">
                                             @if (in_array($conversation->id, $this->streamingConversationIds, true))

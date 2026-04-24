@@ -22,10 +22,10 @@
                 }
             }
         }"
-        class="flex items-end gap-2.5 rounded-[1.15rem] bg-white px-1 py-1 shadow-[0_18px_35px_-30px_rgb(15_23_42/0.35)]"
+        class="flex items-end gap-2.5 rounded-2xl bg-white px-1 py-1"
     >
         <div class="min-w-0 flex-1">
-            <div class="rounded-[1rem] bg-transparent">
+            <div class="rounded-2xl bg-transparent">
                 <textarea
                     x-data="{
                         resize() {
@@ -45,7 +45,7 @@
                     wire:model.live="question"
                     placeholder="{{ __('filament-chatbot::chatbot.placeholder') }}"
                     autofocus
-                    class="block max-h-[150px] w-full resize-none border-0 bg-transparent px-3 py-2 text-sm text-gray-950 outline-hidden placeholder:text-gray-400 disabled:cursor-progress"
+                    class="block max-h-40 w-full resize-none border-0 bg-transparent px-3 py-2 text-sm text-gray-950 outline-hidden placeholder:text-gray-400 disabled:cursor-progress"
                     style="height: 40px;"
                     id="chatbot-input">
                 </textarea>
