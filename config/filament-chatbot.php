@@ -115,4 +115,27 @@ return [
     */
 
     'route_middleware' => ['auth', 'web'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Stream Transport
+    |--------------------------------------------------------------------------
+    |
+    | How the chatbot streams AI responses back to the browser. Supported:
+    | "http" (Server-Sent Events, the default) or "websocket" (Laravel Reverb
+    | broadcasting on a private per-conversation channel). When using the
+    | websocket driver the consuming application needs a broadcasting driver
+    | (e.g. Laravel Reverb) and should configure a queue connection to avoid
+    | blocking the HTTP request while the agent streams.
+    |
+    */
+
+    'stream' => [
+        'transport' => env('FILAMENT_CHATBOT_STREAM_TRANSPORT', 'http'),
+
+        'websocket' => [
+            'channel_prefix' => 'chatbot.conversation',
+            'queue' => env('FILAMENT_CHATBOT_BROADCASTING_QUEUE'),
+        ],
+    ],
 ];

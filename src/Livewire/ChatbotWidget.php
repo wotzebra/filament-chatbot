@@ -5,84 +5,51 @@ namespace Wotz\FilamentChatbot\Livewire;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use Laravel\Ai\Messages\MessageRole;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\On;
 use Livewire\Component;
+use Wotz\FilamentChatbot\Contracts\StreamTransport;
 use Wotz\FilamentChatbot\Facades\Chat;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
+use Wotz\FilamentChatbot\Livewire\Concerns\HasAppearance;
+use Wotz\FilamentChatbot\Livewire\Concerns\HasPageContext;
+use Wotz\FilamentChatbot\Livewire\Concerns\HasStreamingState;
+use Wotz\FilamentChatbot\Models\AgentConversation;
 
 class ChatbotWidget extends Component
 {
+    use HasAppearance;
+    use HasPageContext;
+    use HasStreamingState;
+
     #[Locked]
     public bool $standalone = false;
 
     #[Locked]
     public ?string $conversationId = null;
 
-    public Collection $messages;
+    /** @var array<int, array{role: string, content: string}> */
+    public array $messages = [];
 
     public string $question = '';
-
-    public bool $isStreaming = false;
-
-    public string $streamMessage = '';
-
-    /** @var array<string, mixed> */
-    public array $pageContext = [];
 
     #[Locked]
     public string $streamRouteBase;
 
     #[Locked]
-    public string|false $logoUrl;
-
-    #[Locked]
-    public string $name = '';
-
-    #[Locked]
-    public string $buttonText = '';
-
-    #[Locked]
-    public string $buttonIcon = '';
-
-    #[Locked]
-    public string $welcomeMessage = '';
-
-    #[Locked]
-    public string $winWidth = '';
-
-    #[Locked]
-    public string $winHeight = '';
-
-    public string $winPosition = '';
-
-    #[Locked]
-    public bool $showPositionBtn = true;
-
-    public bool $panelHidden = true;
+    public string $conversationSessionKey;
 
     public function mount(?string $conversationId = null): void
     {
         $chatbot = $this->chatbot();
-        $this->hydrateWidgetChrome($chatbot);
 
-        if ($conversationId !== null) {
-            abort_unless(Chat::ownedBy($conversationId, auth()->user()), 403);
+        $this->initializeAppearance($chatbot);
 
-            $this->standalone = true;
-            $this->conversationId = $conversationId;
-        } else {
-            $this->conversationId = $this->resolveActiveConversationId(
-                session()->get($this->conversationSessionKey()),
-            );
-        }
-
-        $this->messages = $this->conversationId
-            ? Chat::history($this->conversationId)
-            : collect();
-
-        $this->logoUrl = $chatbot->getLogoUrl() ?? false;
+        $this->conversationSessionKey = $chatbot->getConversationKey();
         $this->streamRouteBase = route('chatbot.stream');
+
+        $this->initializeConversationSelection($conversationId);
+        $this->loadConversation($this->activeStreams());
     }
 
     public function askQuestion(): void
@@ -98,55 +65,39 @@ class ChatbotWidget extends Component
             return;
         }
 
-        $this->messages->push([
-            'role' => MessageRole::User->value,
-            'content' => $message,
-        ]);
+        $activeStreams = $this->activeStreams();
 
-        $this->streamMessage = $message;
-        $this->isStreaming = true;
+        if ($this->conversationId !== null && array_key_exists($this->conversationId, $activeStreams)) {
+            $this->loadConversation($activeStreams);
 
-        if (! $this->conversationId) {
-            $this->conversationId = Chat::start(auth()->user(), $message)->id;
-
-            session()->put($this->conversationSessionKey(), $this->conversationId);
+            return;
         }
+
+        $this->beginStreamingQuestion($message, $activeStreams);
     }
 
     public function onStreamComplete(string $assistantMessage = ''): void
     {
-        $resolved = $this->conversationId
-            ? Chat::for($this->conversationId)->finalize($assistantMessage)
-            : $assistantMessage;
+        $this->appendAssistantMessageIfMissing($assistantMessage);
+        $this->clearVisibleStreamState();
 
-        $last = $this->messages->last();
-        $alreadyShown = $last
-            && ($last['role'] ?? null) === MessageRole::Assistant->value
-            && ($last['content'] ?? null) === $resolved;
-
-        if ($resolved !== '' && ! $alreadyShown) {
-            $this->messages->push([
-                'role' => MessageRole::Assistant->value,
-                'content' => $resolved,
-            ]);
+        if ($this->conversationId === null) {
+            return;
         }
 
-        $this->isStreaming = false;
-        $this->streamMessage = '';
+        $activeStreams = $this->activeStreams();
+        unset($activeStreams[$this->conversationId]);
+        $this->storeActiveStreams($activeStreams);
     }
 
-    public function changeWinPosition(): void
+    public function streamTransport(): array
     {
-        $this->winPosition = $this->winPosition === 'left' ? '' : 'left';
+        $transport = app(StreamTransport::class);
 
-        session()->put('chatbot-win-position', $this->winPosition);
-    }
-
-    public function togglePanel(): void
-    {
-        $this->panelHidden = ! $this->panelHidden;
-
-        session()->put('chatbot-panel-hidden', $this->panelHidden);
+        return [
+            'name' => $transport->name(),
+            'config' => $transport->clientConfig($this->conversationId ?? ''),
+        ];
     }
 
     public function clearChat(): void
@@ -155,18 +106,26 @@ class ChatbotWidget extends Component
             return;
         }
 
-        session()->forget($this->conversationSessionKey());
-
+        $this->cleanupVisibleStream();
         $this->conversationId = null;
-        $this->messages = collect();
-        $this->isStreaming = false;
-        $this->streamMessage = '';
+        $this->messages = [];
+        $this->clearVisibleStreamState();
+
+        session()->put($this->conversationSessionKey, '');
     }
 
-    #[On('chatbot:context-updated')]
-    public function setPageContext(array $context = []): void
+    public function openConversation(string $conversationId): void
     {
-        $this->pageContext = $context;
+        if ($this->standalone || ! Chat::ownedBy($conversationId, auth()->user())) {
+            return;
+        }
+
+        $this->cleanupVisibleStream();
+        $this->conversationId = $conversationId;
+
+        session()->put($this->conversationSessionKey, $conversationId);
+
+        $this->loadConversation($this->activeStreams());
     }
 
     public function render(): View
@@ -174,36 +133,96 @@ class ChatbotWidget extends Component
         return view('filament-chatbot::chatbot-widget');
     }
 
-    protected function hydrateWidgetChrome(ChatbotPlugin $chatbot): void
+    #[Computed]
+    public function conversations(): Collection
     {
-        $this->panelHidden = session()->get('chatbot-panel-hidden', true);
-        $this->winPosition = session()->get('chatbot-win-position', '');
-        $this->winWidth = 'width:' . $chatbot->getChatWidth() . ';';
-        $this->winHeight = 'height:' . $chatbot->getChatHeight() . ';';
-        $this->name = $chatbot->getBotName();
-        $this->welcomeMessage = $chatbot->getWelcomeMessage();
-        $this->buttonText = $chatbot->getButtonText();
-        $this->buttonIcon = $chatbot->getButtonIcon();
+        return AgentConversation::query()
+            ->ownedBy(auth()->user())
+            ->orderByDesc('updated_at')
+            ->limit(12)
+            ->get(['id', 'title', 'updated_at'])
+            ->keyBy('id');
     }
 
-    protected function resolveActiveConversationId(?string $conversationId): ?string
+    protected function initializeConversationSelection(?string $conversationId): void
     {
-        if ($conversationId === null || $conversationId === '') {
-            return null;
+        if ($conversationId !== null) {
+            abort_unless(Chat::ownedBy($conversationId, auth()->user()), 403);
+
+            $this->standalone = true;
+            $this->conversationId = $conversationId;
+
+            return;
         }
 
-        if (Chat::ownedBy($conversationId, auth()->user())) {
+        $this->conversationId = $this->currentConversationId(
+            session()->get($this->conversationSessionKey),
+        );
+
+        session()->put($this->conversationSessionKey, $this->conversationId ?? '');
+    }
+
+    protected function loadConversation(array $activeStreams): void
+    {
+        $this->messages = $this->conversationId
+            ? Chat::history($this->conversationId)->all()
+            : [];
+
+        $this->clearVisibleStreamState();
+
+        if ($this->conversationId !== null && isset($activeStreams[$this->conversationId])) {
+            $this->restoreActiveStream($activeStreams[$this->conversationId]['message']);
+        }
+    }
+
+    /**
+     * @param  array<string, array{message: string}>  $activeStreams
+     */
+    protected function beginStreamingQuestion(string $message, array $activeStreams): void
+    {
+        if ($this->conversationId === null) {
+            $this->conversationId = Chat::start(auth()->user(), $message)->id;
+        }
+
+        $this->messages[] = [
+            'role' => MessageRole::User->value,
+            'content' => $message,
+        ];
+
+        $this->streamMessage = $message;
+        $this->isStreaming = true;
+        $this->initialStreamingText = '';
+        $this->shouldStartStreamRequest = true;
+
+        session()->put($this->conversationSessionKey, $this->conversationId);
+
+        $activeStreams[$this->conversationId] = ['message' => $message];
+
+        $this->storeActiveStreams($activeStreams);
+    }
+
+    protected function appendAssistantMessageIfMissing(string $assistantMessage): void
+    {
+        $last = $this->messages[array_key_last($this->messages)] ?? null;
+        $alreadyShown = $last
+            && $last['role'] === MessageRole::Assistant->value
+            && $last['content'] === $assistantMessage;
+
+        if ($assistantMessage !== '' && ! $alreadyShown) {
+            $this->messages[] = [
+                'role' => MessageRole::Assistant->value,
+                'content' => $assistantMessage,
+            ];
+        }
+    }
+
+    protected function currentConversationId(mixed $conversationId): ?string
+    {
+        if (is_string($conversationId) && $conversationId !== '' && Chat::ownedBy($conversationId, auth()->user())) {
             return $conversationId;
         }
 
-        session()->forget($this->conversationSessionKey());
-
         return null;
-    }
-
-    protected function conversationSessionKey(): string
-    {
-        return $this->chatbot()->getConversationKey();
     }
 
     protected function chatbot(): ChatbotPlugin

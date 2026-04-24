@@ -2,31 +2,40 @@
 
 namespace Wotz\FilamentChatbot\Http\Controllers;
 
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Wotz\FilamentChatbot\Facades\Chat;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Http\Requests\ChatStreamRequest;
+use Wotz\FilamentChatbot\Streaming\TransportManager;
+use Wotz\FilamentChatbot\Support\Chatbot\PreparePendingChat;
 
 class ChatStreamController
 {
-    public function __invoke(ChatStreamRequest $request): StreamedResponse
-    {
-        set_time_limit(300);
-
+    public function __invoke(
+        ChatStreamRequest $request,
+        TransportManager $transports,
+        PreparePendingChat $preparePendingChat,
+    ): SymfonyResponse {
         abort_unless(Chat::ownedBy($request->conversationId(), auth()->user()), 403);
 
         /** @var ChatbotPlugin $chatbot */
         $chatbot = filament('chatbot');
 
-        $resolver = $chatbot->getContextResolver();
+        $pending = $preparePendingChat->fromPlugin(
+            conversationId: $request->conversationId(),
+            user: auth()->user(),
+            chatbot: $chatbot,
+            rawContext: $request->context(),
+            request: $request,
+        );
+        $eventsFactory = fn (): iterable => $pending->streamResponse($request->message());
 
-        return Chat::for($request->conversationId())
-            ->as(auth()->user())
-            ->withAgent($chatbot->getAgentClass())
-            ->withProvider($chatbot->getProvider())
-            ->withModel($chatbot->getModel())
-            ->withTools($chatbot->getTools())
-            ->withContext($resolver($request->context(), $request))
-            ->stream($request->message());
+        $transport = $transports->driver($request->transport());
+
+        return $transport->start(
+            $request->conversationId(),
+            $request->message(),
+            $eventsFactory,
+        );
     }
 }

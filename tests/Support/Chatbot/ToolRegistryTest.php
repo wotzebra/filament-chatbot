@@ -1,58 +1,61 @@
 <?php
 
+namespace Wotz\FilamentChatbot\Tests\Support\Chatbot;
+
+use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
+use stdClass;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
+use Wotz\FilamentChatbot\Tests\TestCase;
 
-beforeEach(function () {
-    config()->set('filament-chatbot.tools', []);
-    app(ToolRegistry::class)->withTools([]);
-});
+class ToolRegistryTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
 
-it('resolves tools from config', function () {
-    config()->set('filament-chatbot.tools', [ExampleTool::class]);
+        config()->set('filament-chatbot.tools', []);
+    }
 
-    $tools = app(ToolRegistry::class)->resolveTools();
+    #[Test]
+    public function it_resolves_tools_from_config(): void
+    {
+        config()->set('filament-chatbot.tools', [ExampleTool::class]);
 
-    expect($tools)->toHaveCount(1)
-        ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
-});
+        $tools = app(ToolRegistry::class)->resolveTools();
 
-it('resolves tools registered through withTools', function () {
-    $tools = app(ToolRegistry::class)
-        ->withTools([ExampleTool::class])
-        ->resolveTools();
+        $this->assertCount(1, $tools);
+        $this->assertInstanceOf(ExampleTool::class, $tools[0]);
+    }
 
-    expect($tools)->toHaveCount(1)
-        ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
-});
+    #[Test]
+    public function it_resolves_extra_tools_passed_at_call_time(): void
+    {
+        $tools = app(ToolRegistry::class)->resolveTools([ExampleTool::class]);
 
-it('merges config tools with extra tools without duplicates', function () {
-    config()->set('filament-chatbot.tools', [ExampleTool::class]);
+        $this->assertCount(1, $tools);
+        $this->assertInstanceOf(ExampleTool::class, $tools[0]);
+    }
 
-    $tools = app(ToolRegistry::class)
-        ->withTools([ExampleTool::class])
-        ->resolveTools();
+    #[Test]
+    public function it_merges_config_tools_with_extra_tools_without_duplicates(): void
+    {
+        config()->set('filament-chatbot.tools', [ExampleTool::class]);
 
-    expect($tools)->toHaveCount(1)
-        ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
-});
+        $tools = app(ToolRegistry::class)->resolveTools([ExampleTool::class]);
 
-it('throws when a configured tool does not implement the tool contract', function () {
-    config()->set('filament-chatbot.tools', [stdClass::class]);
+        $this->assertCount(1, $tools);
+        $this->assertInstanceOf(ExampleTool::class, $tools[0]);
+    }
 
-    expect(fn () => app(ToolRegistry::class)->resolveTools())
-        ->toThrow(RuntimeException::class);
-});
+    #[Test]
+    public function it_throws_when_a_configured_tool_does_not_implement_the_tool_contract(): void
+    {
+        config()->set('filament-chatbot.tools', [stdClass::class]);
 
-it('restores previous extra tools after usingTools completes', function () {
-    $registry = app(ToolRegistry::class)->withTools([ExampleTool::class]);
+        $this->expectException(RuntimeException::class);
 
-    $registry->usingTools([], function (): void {
-        expect(app(ToolRegistry::class)->resolveTools())->toHaveCount(0);
-    });
-
-    $tools = $registry->resolveTools();
-
-    expect($tools)->toHaveCount(1)
-        ->and($tools[0])->toBeInstanceOf(ExampleTool::class);
-});
+        app(ToolRegistry::class)->resolveTools();
+    }
+}

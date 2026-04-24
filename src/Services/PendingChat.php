@@ -6,16 +6,9 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Context;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
-use Laravel\Ai\Exceptions\AiException;
-use Laravel\Ai\Exceptions\InsufficientCreditsException;
-use Laravel\Ai\Exceptions\ProviderOverloadedException;
-use Laravel\Ai\Exceptions\RateLimitedException;
+use Laravel\Ai\Responses\StreamableAgentResponse;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Throwable;
-use Wotz\FilamentChatbot\Models\AgentConversationMessage;
-use Wotz\FilamentChatbot\Support\Chatbot\SseStream;
-use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
+use Wotz\FilamentChatbot\Support\Chatbot\ChatOverrides;
 
 class PendingChat
 {
@@ -76,70 +69,32 @@ class PendingChat
         return $this;
     }
 
-    public function stream(string $message): StreamedResponse
+    public function applyOverrides(ChatOverrides $overrides): static
     {
-        $events = app(ToolRegistry::class)->usingTools($this->extraTools, function () use ($message): iterable {
-            $agent = $this->buildAgent();
-
-            return $agent->stream(
-                $message,
-                provider: $this->config->provider,
-                model: $this->config->model,
-            );
-        });
-
-        return new StreamedResponse(function () use ($events): void {
-            $sse = new SseStream;
-
-            try {
-                foreach ($events as $event) {
-                    $sse->event((string) $event);
-                }
-            } catch (Throwable $e) {
-                report($e);
-
-                $sse->event(['type' => 'text_delta', 'delta' => $this->friendlyMessageFor($e)]);
-            } finally {
-                $sse->done();
-            }
-        }, 200, [
-            'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
-            'X-Accel-Buffering' => 'no',
-        ]);
-    }
-
-    public function streamEvents(string $message): iterable
-    {
-        return app(ToolRegistry::class)->usingTools($this->extraTools, function () use ($message): iterable {
-            $agent = $this->buildAgent();
-
-            return $agent->stream(
-                $message,
-                provider: $this->config->provider,
-                model: $this->config->model,
-            );
-        });
-    }
-
-    public function finalize(string $streamedMessage): string
-    {
-        $latest = AgentConversationMessage::query()
-            ->forConversation($this->conversationId)
-            ->assistant()
-            ->latest('created_at')
-            ->first();
-
-        if ($streamedMessage !== '' && $latest && $latest->content === '') {
-            $latest->update(['content' => $streamedMessage]);
-
-            return $streamedMessage;
+        if ($overrides->agent !== null && $overrides->agent !== '') {
+            $this->withAgent($overrides->agent);
         }
 
-        return $streamedMessage !== '' ? $streamedMessage : (string) $latest?->content;
+        $this->withProvider($overrides->provider);
+        $this->withModel($overrides->model);
+        $this->withTools($overrides->tools);
+        $this->withContext($overrides->context);
+
+        return $this;
     }
 
-    protected function buildAgent(): Agent
+    public function streamResponse(string $message): StreamableAgentResponse
+    {
+        $agent = $this->buildAgent();
+
+        return $agent->stream(
+            $message,
+            provider: $this->config->provider,
+            model: $this->config->model,
+        );
+    }
+
+    public function buildAgent(): Agent
     {
         $this->applyContext();
 
@@ -150,7 +105,11 @@ class PendingChat
         }
 
         /** @var Agent $agent */
-        $agent = new $agentClass;
+        $agent = app($agentClass);
+
+        if (method_exists($agent, 'withExtraTools')) {
+            $agent->withExtraTools($this->extraTools);
+        }
 
         if ($agent instanceof Conversational && method_exists($agent, 'continue')) {
             $agent->continue($this->conversationId, as: $this->user);
@@ -162,16 +121,5 @@ class PendingChat
     protected function applyContext(): void
     {
         Context::addHidden('chatbot.context', $this->context);
-    }
-
-    protected function friendlyMessageFor(Throwable $e): string
-    {
-        return match (true) {
-            $e instanceof RateLimitedException => __('filament-chatbot::chatbot.errors.rate_limited'),
-            $e instanceof ProviderOverloadedException => __('filament-chatbot::chatbot.errors.overloaded'),
-            $e instanceof InsufficientCreditsException => __('filament-chatbot::chatbot.errors.insufficient_credits'),
-            $e instanceof AiException => __('filament-chatbot::chatbot.errors.ai_failed'),
-            default => __('filament-chatbot::chatbot.errors.generic'),
-        };
     }
 }

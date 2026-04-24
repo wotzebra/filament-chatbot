@@ -1,44 +1,57 @@
 <?php
 
+namespace Wotz\FilamentChatbot\Tests\Support\Chatbot;
+
 use Illuminate\Http\Request;
+use PHPUnit\Framework\Attributes\Test;
 use Wotz\FilamentChatbot\Support\Chatbot\ContextResolver;
+use Wotz\FilamentChatbot\Tests\TestCase;
 
-it('returns null when the raw context is empty', function () {
-    $request = Request::create('/');
-    $request->headers->set('Referer', 'https://example.test/admin/orders/42');
+class ContextResolverTest extends TestCase
+{
+    #[Test]
+    public function it_returns_null_when_the_raw_context_is_empty(): void
+    {
+        $request = Request::create('/');
+        $request->headers->set('Referer', 'https://example.test/admin/orders/42');
 
-    expect((new ContextResolver)([], $request))->toBeNull();
-});
+        $this->assertNull((new ContextResolver)([], $request));
+    }
 
-it('includes the referer url as page metadata when a record is given', function () {
-    $request = Request::create('/');
-    $request->headers->set('Referer', 'https://example.test/admin/orders/42');
+    #[Test]
+    public function it_includes_the_referer_url_as_page_metadata_when_a_record_is_given(): void
+    {
+        $request = Request::create('/');
+        $request->headers->set('Referer', 'https://example.test/admin/orders/42');
 
-    $resolved = (new ContextResolver)(['type' => 'order'], $request);
+        $resolved = (new ContextResolver)(['type' => 'order'], $request);
 
-    expect($resolved)
-        ->toContain('Current page context:')
-        ->toContain('"url": "https://example.test/admin/orders/42"');
-});
+        $this->assertStringContainsString('Current page context:', $resolved);
+        $this->assertStringContainsString('"url": "https://example.test/admin/orders/42"', $resolved);
+    }
 
-it('serializes the raw context as json under the record key', function () {
-    $resolved = (new ContextResolver)(
-        ['type' => 'order', 'id' => 42, 'number' => 'O-42'],
-        Request::create('/'),
-    );
+    #[Test]
+    public function it_serializes_the_raw_context_as_json_under_the_record_key(): void
+    {
+        $resolved = (new ContextResolver)(
+            ['type' => 'order', 'id' => 42, 'number' => 'O-42'],
+            Request::create('/'),
+        );
 
-    expect($resolved)
-        ->toContain('Current page context:')
-        ->toContain('"type": "order"')
-        ->toContain('"id": 42')
-        ->toContain('"number": "O-42"');
-});
+        $this->assertStringContainsString('Current page context:', $resolved);
+        $this->assertStringContainsString('"type": "order"', $resolved);
+        $this->assertStringContainsString('"id": 42', $resolved);
+        $this->assertStringContainsString('"number": "O-42"', $resolved);
+    }
 
-it('includes the current panel id as page metadata', function () {
-    $resolved = (new ContextResolver)(
-        ['type' => 'order'],
-        Request::create('/'),
-    );
+    #[Test]
+    public function it_includes_the_current_panel_id_as_page_metadata(): void
+    {
+        $resolved = (new ContextResolver)(
+            ['type' => 'order'],
+            Request::create('/'),
+        );
 
-    expect($resolved)->toContain('"panel": "test"');
-});
+        $this->assertStringContainsString('"panel": "test"', $resolved);
+    }
+}

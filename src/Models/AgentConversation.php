@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Wotz\FilamentChatbot\Database\Factories\AgentConversationFactory;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Models\Builders\AgentConversationBuilder;
@@ -16,6 +17,8 @@ use Wotz\FilamentChatbot\Models\Builders\AgentConversationBuilder;
  * @property string $id
  * @property int|null $user_id
  * @property string $title
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 #[UseEloquentBuilder(AgentConversationBuilder::class)]
 class AgentConversation extends Model

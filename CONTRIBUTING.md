@@ -20,7 +20,7 @@ composer install
 3. Run tests and static checks.
 
 ```bash
-vendor/bin/pest
+vendor/bin/phpunit
 vendor/bin/phpstan analyse
 vendor/bin/pint --test
 ```
@@ -34,7 +34,7 @@ vendor/bin/pint --test
 - Keep changes focused and atomic.
 - Include tests for bug fixes and new features.
 - Follow existing code style and architecture patterns.
-- Document user-facing changes in `README.md`, `docs/index.md`, and `CHANGELOG.md`.
+- Document user-facing changes in `README.md`, the relevant page under `documentation/`, and `CHANGELOG.md`.
 
 ## Reporting Issues
 

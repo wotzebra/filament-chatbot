@@ -7,23 +7,17 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 use Wotz\FilamentChatbot\Models\AgentConversationMessage;
+use Wotz\FilamentChatbot\Support\Chatbot\PreparePendingChat;
 
 class ChatManager
 {
-    public function __construct(protected ChatConfig $defaults) {}
+    public function __construct(protected PreparePendingChat $preparePendingChat) {}
 
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    public function start(?Authenticatable $user = null, ?string $title = null, array $attributes = []): AgentConversation
+    public function start(?Authenticatable $user = null, string $title = ''): AgentConversation
     {
-        if ($title !== null && $title !== '') {
-            $attributes['title'] ??= Str::limit($title, 80);
-        }
-
-        return AgentConversation::query()->create([
+        return AgentConversation::create([
             'user_id' => $user?->getAuthIdentifier(),
-            ...$attributes,
+            'title' => $title !== '' ? Str::limit($title, 80) : '',
         ]);
     }
 
@@ -56,11 +50,11 @@ class ChatManager
 
     public function delete(string $id): bool
     {
-        return (bool) AgentConversation::query()->whereKey($id)->delete();
+        return AgentConversation::query()->whereKey($id)->delete();
     }
 
     public function for(string $conversationId): PendingChat
     {
-        return new PendingChat(clone $this->defaults, $conversationId);
+        return $this->preparePendingChat->fromOverrides($conversationId, user: null);
     }
 }
