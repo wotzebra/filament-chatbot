@@ -23,7 +23,7 @@ class WebsocketStreamTransport implements StreamTransport
                 $conversationId,
                 $message,
                 auth()->user()?->getAuthIdentifier(),
-                $chatbot?->getUserModel(),
+                $chatbot->getUserModel(),
                 app(PreparePendingChat::class)->resolveOverrides(
                     chatbot: $chatbot,
                     rawContext: (array) request()->input('context', []),
