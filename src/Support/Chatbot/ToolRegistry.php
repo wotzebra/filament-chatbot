@@ -7,32 +7,15 @@ use RuntimeException;
 
 class ToolRegistry
 {
-    protected array $extraTools = [];
-
-    public function withTools(array $toolClasses): static
-    {
-        $this->extraTools = $toolClasses;
-
-        return $this;
-    }
-
-    public function usingTools(array $toolClasses, callable $callback): mixed
-    {
-        $previousTools = $this->extraTools;
-        $this->extraTools = $toolClasses;
-
-        try {
-            return $callback();
-        } finally {
-            $this->extraTools = $previousTools;
-        }
-    }
-
-    public function resolveTools(): array
+    /**
+     * @param  array<int, mixed>  $extraTools
+     * @return array<int, Tool>
+     */
+    public function resolveTools(array $extraTools = []): array
     {
         $configTools = config('filament-chatbot.tools', []);
 
-        return collect([...$configTools, ...$this->extraTools])
+        return collect([...$configTools, ...$extraTools])
             ->map(fn (mixed $tool) => is_object($tool) ? $tool : app($tool))
             ->each(function (mixed $tool): void {
                 if (! $tool instanceof Tool) {

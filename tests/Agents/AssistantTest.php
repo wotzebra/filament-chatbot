@@ -2,12 +2,10 @@
 
 use Illuminate\Support\Facades\Context;
 use Wotz\FilamentChatbot\Agents\Assistant;
-use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
 
 beforeEach(function () {
     config()->set('filament-chatbot.tools', []);
-    app(ToolRegistry::class)->withTools([]);
     Context::forgetHidden('chatbot.context');
 });
 
@@ -25,11 +23,12 @@ it('reads instructions, provider, model and timeout from config', function () {
         ->and($agent->timeout())->toBe($timeout);
 });
 
-it('deduplicates tools that appear in both config and the registry', function () {
+it('deduplicates tools that appear in both config and the per-agent extras', function () {
     config()->set('filament-chatbot.tools', [ExampleTool::class]);
-    app(ToolRegistry::class)->withTools([ExampleTool::class]);
 
-    $tools = app(Assistant::class)->tools();
+    $tools = app(Assistant::class)
+        ->withExtraTools([ExampleTool::class])
+        ->tools();
 
     expect($tools)->toHaveCount(1)
         ->and($tools[0])->toBeInstanceOf(ExampleTool::class);

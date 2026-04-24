@@ -134,7 +134,6 @@ return [
         'transport' => env('FILAMENT_CHATBOT_STREAM_TRANSPORT', 'http'),
 
         'websocket' => [
-            'connection' => env('FILAMENT_CHATBOT_BROADCASTING_CONNECTION'),
             'channel_prefix' => 'chatbot.conversation',
             'queue' => env('FILAMENT_CHATBOT_BROADCASTING_QUEUE'),
         ],

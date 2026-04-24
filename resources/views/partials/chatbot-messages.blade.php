@@ -172,7 +172,6 @@
                 }
 
                 const channelName = this.transport.config.channel;
-                const eventName = this.transport.config.event ?? 'chatbot.stream';
 
                 if (! channelName) {
                     return false;
@@ -180,15 +179,18 @@
 
                 this.echoChannel = channelName;
 
-                window.Echo.private(channelName).listen('.' + eventName, (payload) => {
-                    const event = payload && payload.payload ? payload.payload : payload;
+                const channel = window.Echo.private(channelName);
 
-                    if (event && event.type === 'done') {
-                        this.finalize();
-                        return;
-                    }
+                channel.listen('.text_delta', (payload) => {
+                    this.appendDelta({ type: 'text_delta', delta: payload.delta ?? '' });
+                });
 
-                    this.appendDelta(event);
+                channel.listen('.stream_end', () => {
+                    this.finalize();
+                });
+
+                channel.listen('.error', () => {
+                    this.finalize();
                 });
 
                 return true;

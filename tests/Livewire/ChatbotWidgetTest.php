@@ -12,14 +12,14 @@ function conversationKey(): string
     return filament('chatbot')->getConversationKey();
 }
 
-function openConversationsKey(): string
-{
-    return conversationKey() . '_open';
-}
-
 function activeStreamsKey(): string
 {
     return conversationKey() . '_active_streams';
+}
+
+function conversationIds(mixed $conversations): array
+{
+    return collect($conversations)->pluck('id')->all();
 }
 
 it('defaults the conversation session key to the panel id', function () {
@@ -31,7 +31,6 @@ it('defaults the conversation session key to the panel id', function () {
 it('mounts with empty state when the session is empty', function () {
     Livewire::test(ChatbotWidget::class)
         ->assertSet('conversationId', null)
-        ->assertSet('openConversationIds', [])
         ->assertSet('isStreaming', false)
         ->assertSet('panelHidden', true);
 });
@@ -43,7 +42,6 @@ it('loads existing messages when the session has a conversation id', function ()
     AgentConversationMessage::factory()->assistant()->for($conversation, 'conversation')->create();
 
     session()->put(conversationKey(), $conversation->id);
-    session()->put(openConversationsKey(), [$conversation->id]);
 
     $component = Livewire::test(ChatbotWidget::class)
         ->assertSet('conversationId', $conversation->id);
@@ -55,7 +53,7 @@ it('loads existing messages when the session has a conversation id', function ()
         ->and($messages[1]['role'])->toBe(MessageRole::Assistant->value);
 });
 
-it('loads recent conversations into the sidebar list with previews', function () {
+it('loads recent conversations into the sidebar list', function () {
     $olderConversation = AgentConversation::factory()->create([
         'title' => 'Older thread',
         'updated_at' => now()->subHour(),
@@ -65,22 +63,13 @@ it('loads recent conversations into the sidebar list with previews', function ()
         'updated_at' => now(),
     ]);
 
-    AgentConversationMessage::factory()
-        ->assistant()
-        ->for($olderConversation, 'conversation')
-        ->create(['content' => 'Older preview']);
+    $conversations = Livewire::test(ChatbotWidget::class)->get('conversations');
 
-    AgentConversationMessage::factory()
-        ->assistant()
-        ->for($newerConversation, 'conversation')
-        ->create(['content' => 'Newest preview']);
-
-    $conversationList = Livewire::test(ChatbotWidget::class)->get('conversationList');
-
-    expect($conversationList)->toHaveCount(2)
-        ->and($conversationList[0]['id'])->toBe($newerConversation->id)
-        ->and($conversationList[0]['preview'])->toBe('Newest preview')
-        ->and($conversationList[1]['id'])->toBe($olderConversation->id);
+    expect($conversations)->toHaveCount(2)
+        ->and(conversationIds($conversations))->toBe([
+            $newerConversation->id,
+            $olderConversation->id,
+        ]);
 });
 
 it('keeps the sidebar list sorted by updated at when opening another conversation', function () {
@@ -98,14 +87,14 @@ it('keeps the sidebar list sorted by updated at when opening another conversatio
 
     $component = Livewire::test(ChatbotWidget::class);
 
-    expect(array_column($component->get('conversationList'), 'id'))->toBe([
+    expect(conversationIds($component->get('conversations')))->toBe([
         $newerConversation->id,
         $olderConversation->id,
     ]);
 
     $component->call('openConversation', $olderConversation->id);
 
-    expect(array_column($component->get('conversationList'), 'id'))->toBe([
+    expect(conversationIds($component->get('conversations')))->toBe([
         $newerConversation->id,
         $olderConversation->id,
     ]);
@@ -127,7 +116,7 @@ it('moves a conversation to the top of the sidebar list when it gets updated', f
     $component = Livewire::test(ChatbotWidget::class)
         ->call('openConversation', $olderConversation->id);
 
-    expect(array_column($component->get('conversationList'), 'id'))->toBe([
+    expect(conversationIds($component->get('conversations')))->toBe([
         $newerConversation->id,
         $olderConversation->id,
     ]);
@@ -136,7 +125,7 @@ it('moves a conversation to the top of the sidebar list when it gets updated', f
         ->set('question', fake()->sentence())
         ->call('askQuestion');
 
-    expect(array_column($component->get('conversationList'), 'id'))->toBe([
+    expect(conversationIds($component->get('conversations')))->toBe([
         $olderConversation->id,
         $newerConversation->id,
     ]);
@@ -224,15 +213,7 @@ it('stores the active stream state in the session when asking a question', funct
     ]);
 });
 
-it('stores the conversation in the open conversation list when asking a question', function () {
-    $component = Livewire::test(ChatbotWidget::class)
-        ->set('question', fake()->sentence())
-        ->call('askQuestion');
-
-    expect(session()->get(openConversationsKey()))->toBe([$component->get('conversationId')]);
-});
-
-it('persists the user message when asking a question', function () {
+it('does not persist the user message directly on askQuestion; the SDK middleware writes it after stream completes', function () {
     $question = fake()->sentence();
 
     $component = Livewire::test(ChatbotWidget::class)
@@ -240,14 +221,8 @@ it('persists the user message when asking a question', function () {
         ->call('askQuestion');
 
     $conversationId = $component->get('conversationId');
-    $dbMessages = AgentConversationMessage::query()
-        ->forConversation($conversationId)
-        ->orderBy('created_at')
-        ->get();
 
-    expect($dbMessages)->toHaveCount(1)
-        ->and($dbMessages[0]->role)->toBe(MessageRole::User->value)
-        ->and($dbMessages[0]->content)->toBe($question);
+    expect(AgentConversationMessage::query()->forConversation($conversationId)->count())->toBe(0);
 });
 
 it('reuses the same conversation on subsequent questions', function () {
@@ -290,12 +265,11 @@ it('ignores a duplicate question when the session already has an active stream f
     AgentConversationMessage::factory()
         ->assistant()
         ->for($conversation, 'conversation')
-        ->create(['content' => '', 'meta' => ['pending' => true]]);
+        ->create(['content' => '']);
 
     $component = Livewire::test(ChatbotWidget::class);
 
     session()->put(conversationKey(), $conversation->id);
-    session()->put(openConversationsKey(), [$conversation->id]);
     session()->put(activeStreamsKey(), [
         $conversation->id => ['message' => $question],
     ]);
@@ -355,7 +329,6 @@ it('fetches the assistant message from the database when none is passed to onStr
         ->create();
 
     session()->put(conversationKey(), $conversation->id);
-    session()->put(openConversationsKey(), [$conversation->id]);
 
     $component = Livewire::test(ChatbotWidget::class)->call('onStreamComplete', '');
 
@@ -368,7 +341,6 @@ it('appends the streamed reply to the local messages when the stream completes',
     $conversation = AgentConversation::factory()->create();
 
     session()->put(conversationKey(), $conversation->id);
-    session()->put(openConversationsKey(), [$conversation->id]);
 
     $component = Livewire::test(ChatbotWidget::class)
         ->call('onStreamComplete', $reply = fake()->sentence());
@@ -485,10 +457,9 @@ it('restores an active stream across navigation and keeps listening on the same 
     AgentConversationMessage::factory()
         ->assistant()
         ->for($conversation, 'conversation')
-        ->create(['content' => '', 'meta' => ['pending' => true]]);
+        ->create(['content' => '']);
 
     session()->put(conversationKey(), $conversation->id);
-    session()->put(openConversationsKey(), [$conversation->id]);
     session()->put(activeStreamsKey(), [
         $conversation->id => ['message' => $question],
     ]);
@@ -519,10 +490,9 @@ it('does not duplicate the pending user message when restoring an active stream 
     AgentConversationMessage::factory()
         ->assistant()
         ->for($conversation, 'conversation')
-        ->create(['content' => '', 'meta' => ['pending' => true]]);
+        ->create(['content' => '']);
 
     session()->put(conversationKey(), $conversation->id);
-    session()->put(openConversationsKey(), [$conversation->id]);
     session()->put(activeStreamsKey(), [
         $conversation->id => ['message' => $question],
     ]);
@@ -547,10 +517,9 @@ it('restores the partial assistant response into the streaming bubble across nav
     AgentConversationMessage::factory()
         ->assistant()
         ->for($conversation, 'conversation')
-        ->create(['content' => $partialAnswer, 'meta' => ['pending' => true]]);
+        ->create(['content' => $partialAnswer]);
 
     session()->put(conversationKey(), $conversation->id);
-    session()->put(openConversationsKey(), [$conversation->id]);
     session()->put(activeStreamsKey(), [
         $conversation->id => ['message' => $question],
     ]);
@@ -592,10 +561,9 @@ it('renders restored streams without restarting the websocket request', function
     AgentConversationMessage::factory()
         ->assistant()
         ->for($conversation, 'conversation')
-        ->create(['content' => '', 'meta' => ['pending' => true]]);
+        ->create(['content' => '']);
 
     session()->put(conversationKey(), $conversation->id);
-    session()->put(openConversationsKey(), [$conversation->id]);
     session()->put(activeStreamsKey(), [
         $conversation->id => ['message' => $question],
     ]);
@@ -644,8 +612,7 @@ it('starts a new draft session without removing the existing conversation', func
         ->assertSet('streamMessage', '');
 
     expect($component->get('messages'))->toHaveCount(0)
-        ->and(session()->get(conversationKey()))->toBe('')
-        ->and(session()->get(openConversationsKey()))->toHaveCount(1);
+        ->and(session()->get(conversationKey()))->toBe('');
 });
 
 it('can keep a streaming conversation open while starting a second conversation', function () {
@@ -665,7 +632,6 @@ it('can keep a streaming conversation open while starting a second conversation'
     $secondConversationId = $firstComponent->get('conversationId');
 
     expect($secondConversationId)->not->toBe($firstConversationId)
-        ->and(session()->get(openConversationsKey()))->toBe([$secondConversationId, $firstConversationId])
         ->and(session()->get(activeStreamsKey()))->toBe([
             $firstConversationId => ['message' => $firstQuestion],
             $secondConversationId => ['message' => $secondQuestion],
@@ -682,7 +648,6 @@ it('can switch back to an earlier conversation while another one is open', funct
     AgentConversationMessage::factory()->assistant()->for($secondConversation, 'conversation')->create(['content' => 'Second answer']);
 
     session()->put(conversationKey(), $secondConversation->id);
-    session()->put(openConversationsKey(), [$secondConversation->id, $firstConversation->id]);
 
     Livewire::test(ChatbotWidget::class)
         ->call('openConversation', $firstConversation->id)
@@ -691,7 +656,7 @@ it('can switch back to an earlier conversation while another one is open', funct
         ->assertSet('messages.1.content', 'First answer');
 });
 
-it('can open an owned conversation that is not in the open session list', function () {
+it('can open any owned conversation', function () {
     $conversation = AgentConversation::factory()->create(['title' => 'Archived']);
 
     AgentConversationMessage::factory()->user()->for($conversation, 'conversation')->create(['content' => 'Archived question']);
@@ -702,6 +667,4 @@ it('can open an owned conversation that is not in the open session list', functi
         ->assertSet('conversationId', $conversation->id)
         ->assertSet('messages.0.content', 'Archived question')
         ->assertSet('messages.1.content', 'Archived answer');
-
-    expect(session()->get(openConversationsKey()))->toContain($conversation->id);
 });

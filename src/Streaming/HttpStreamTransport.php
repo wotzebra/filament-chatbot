@@ -3,11 +3,11 @@
 namespace Wotz\FilamentChatbot\Streaming;
 
 use Closure;
+use Laravel\Ai\Streaming\Events\StreamEvent;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 use Wotz\FilamentChatbot\Contracts\StreamTransport;
-use Wotz\FilamentChatbot\Support\Chatbot\SseStream;
-use Wotz\FilamentChatbot\Support\Chatbot\StreamRunner;
+use Wotz\FilamentChatbot\Support\Chatbot\FriendlyErrorMessage;
 
 class HttpStreamTransport implements StreamTransport
 {
@@ -15,16 +15,22 @@ class HttpStreamTransport implements StreamTransport
     {
         set_time_limit(300);
 
-        $user = auth()->user();
-
-        return new StreamedResponse(function () use ($conversationId, $eventsFactory, $user): void {
-            $sse = new SseStream;
-            $runner = app(StreamRunner::class);
-
+        return response()->stream(function () use ($eventsFactory): void {
             try {
-                $runner->run($conversationId, $user, $eventsFactory, fn (array $event) => $sse->event($event));
+                foreach ($eventsFactory() as $event) {
+                    $this->emit($event instanceof StreamEvent
+                        ? (string) $event
+                        : json_encode($event));
+                }
+            } catch (Throwable $e) {
+                report($e);
+
+                $this->emit(json_encode([
+                    'type' => 'text_delta',
+                    'delta' => FriendlyErrorMessage::resolve($e),
+                ]));
             } finally {
-                $sse->done();
+                $this->emit('[DONE]');
             }
         }, 200, [
             'Content-Type' => 'text/event-stream',
@@ -43,5 +49,16 @@ class HttpStreamTransport implements StreamTransport
         return [
             'endpoint' => route('chatbot.stream'),
         ];
+    }
+
+    protected function emit(string $payload): void
+    {
+        echo 'data: '.$payload."\n\n";
+
+        if (ob_get_level() > 0) {
+            @ob_flush();
+        }
+
+        flush();
     }
 }

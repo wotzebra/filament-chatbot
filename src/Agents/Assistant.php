@@ -2,6 +2,9 @@
 
 namespace Wotz\FilamentChatbot\Agents;
 
+use Laravel\Ai\Attributes\MaxSteps;
+use Laravel\Ai\Attributes\MaxTokens;
+use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
@@ -11,6 +14,9 @@ use Stringable;
 use Wotz\FilamentChatbot\Agents\Concerns\ComposesInstructionsWithContext;
 use Wotz\FilamentChatbot\Agents\Concerns\UsesToolsFromConfig;
 
+#[MaxSteps(5)]
+#[MaxTokens(500)]
+#[Temperature(0.7)]
 class Assistant implements Agent, Conversational, HasTools
 {
     use ComposesInstructionsWithContext;

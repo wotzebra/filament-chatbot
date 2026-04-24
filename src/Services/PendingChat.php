@@ -6,9 +6,9 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Context;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
+use Laravel\Ai\Responses\StreamableAgentResponse;
 use RuntimeException;
-use Wotz\FilamentChatbot\Models\AgentConversationMessage;
-use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
+use Wotz\FilamentChatbot\Support\Chatbot\ChatOverrides;
 
 class PendingChat
 {
@@ -69,76 +69,32 @@ class PendingChat
         return $this;
     }
 
-    /**
-     * Apply plugin-derived overrides in one shot. Keys are optional; missing
-     * keys leave the existing config untouched.
-     *
-     * @param  array{agent?: string, provider?: string|array|null, model?: ?string, tools?: array<int, mixed>, context?: ?string}  $overrides
-     */
-    public function applyOverrides(array $overrides): static
+    public function applyOverrides(ChatOverrides $overrides): static
     {
-        if (! empty($overrides['agent'])) {
-            $this->withAgent($overrides['agent']);
+        if ($overrides->agent !== null && $overrides->agent !== '') {
+            $this->withAgent($overrides->agent);
         }
 
-        if (array_key_exists('provider', $overrides)) {
-            $this->withProvider($overrides['provider']);
-        }
-
-        if (array_key_exists('model', $overrides)) {
-            $this->withModel($overrides['model']);
-        }
-
-        if (! empty($overrides['tools'])) {
-            $this->withTools($overrides['tools']);
-        }
-
-        if (array_key_exists('context', $overrides)) {
-            $this->withContext($overrides['context']);
-        }
+        $this->withProvider($overrides->provider);
+        $this->withModel($overrides->model);
+        $this->withTools($overrides->tools);
+        $this->withContext($overrides->context);
 
         return $this;
     }
 
-    public function streamEvents(string $message): iterable
+    public function streamResponse(string $message): StreamableAgentResponse
     {
-        return app(ToolRegistry::class)->usingTools($this->extraTools, function () use ($message): iterable {
-            $agent = $this->buildAgent();
+        $agent = $this->buildAgent();
 
-            return $agent->stream(
-                $message,
-                provider: $this->config->provider,
-                model: $this->config->model,
-            );
-        });
+        return $agent->stream(
+            $message,
+            provider: $this->config->provider,
+            model: $this->config->model,
+        );
     }
 
-    public function finalize(string $streamedMessage): string
-    {
-        $latest = AgentConversationMessage::query()
-            ->forConversation($this->conversationId)
-            ->assistant()
-            ->latest('created_at')
-            ->first();
-
-        if ($latest === null) {
-            return $streamedMessage;
-        }
-
-        $resolved = $streamedMessage !== '' ? $streamedMessage : (string) $latest->content;
-
-        $latest->update([
-            'content' => $resolved,
-            'meta' => [
-                ...($latest->meta ?? []),
-                'pending' => false,
-            ],
-        ]);
-
-        return $resolved;
-    }
-
-    protected function buildAgent(): Agent
+    public function buildAgent(): Agent
     {
         $this->applyContext();
 
@@ -149,7 +105,11 @@ class PendingChat
         }
 
         /** @var Agent $agent */
-        $agent = new $agentClass;
+        $agent = app($agentClass);
+
+        if (method_exists($agent, 'withExtraTools')) {
+            $agent->withExtraTools($this->extraTools);
+        }
 
         if ($agent instanceof Conversational && method_exists($agent, 'continue')) {
             $agent->continue($this->conversationId, as: $this->user);

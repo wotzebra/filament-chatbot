@@ -111,8 +111,7 @@ See the [Laravel Broadcasting documentation](https://laravel.com/docs/broadcasti
 | Variable | Config key | Default | Description |
 |---|---|---|---|
 | `FILAMENT_CHATBOT_STREAM_TRANSPORT` | `stream.transport` | `http` | `http` for SSE, `websocket` for Reverb broadcasting |
-| `FILAMENT_CHATBOT_BROADCASTING_CONNECTION` | `stream.websocket.connection` | `null` | Broadcasting connection name. `null` uses your default `BROADCAST_CONNECTION` |
-| `FILAMENT_CHATBOT_BROADCASTING_QUEUE` | `stream.websocket.queue` | `null` | Queue used by the streaming job. `null` falls back to the connection default |
+| `FILAMENT_CHATBOT_BROADCASTING_QUEUE` | `stream.websocket.queue` | `null` | Queue used by the streaming job. Broadcasts go through the default `BROADCAST_CONNECTION` |
 
 ### Trade-offs
 

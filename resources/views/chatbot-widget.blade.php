@@ -89,7 +89,7 @@
                 </div>
             </div>
 
-            @php($activeConversation = collect($conversationList)->firstWhere('is_active', true))
+            @php($activeConversation = $conversationId ? $this->conversations->get($conversationId) : null)
 
             <div class="border-b border-gray-200/80 bg-gray-50/70 px-3 py-1.5">
                 <div class="flex items-center gap-2 overflow-x-auto">
@@ -121,7 +121,7 @@
 
                     @if ($activeConversation)
                         <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_10%,white)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-primary-700,#075748)]">
-                            <span class="max-w-28 truncate">{{ $activeConversation['title'] }}</span>
+                            <span class="max-w-28 truncate">{{ $activeConversation->title !== '' ? $activeConversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
 
                             @if ($isStreaming)
                                 <span class="inline-flex h-2 w-2 rounded-full bg-[var(--color-primary-500,#0BA284)]"></span>
@@ -129,20 +129,20 @@
                         </span>
                     @endif
 
-                    @foreach (array_slice($conversationList, 0, 3) as $conversation)
-                        @continue($conversation['is_active'])
+                    @foreach ($this->conversations->take(3) as $conversation)
+                        @continue($conversation->id === $conversationId)
 
                         <button
                             type="button"
-                            wire:click="openConversation('{{ $conversation['id'] }}')"
+                            wire:click="openConversation('{{ $conversation->id }}')"
                             @class([
                                 'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition',
                                 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900',
-                            ])
-                        >
-                            <span class="max-w-24 truncate">{{ $conversation['title'] }}</span>
+                        ])
+                    >
+                            <span class="max-w-24 truncate">{{ $conversation->title !== '' ? $conversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
 
-                            @if ($conversation['is_streaming'])
+                            @if (in_array($conversation->id, $this->streamingConversationIds, true))
                                 <span class="inline-flex h-2 w-2 rounded-full bg-[var(--color-primary-500,#0BA284)]"></span>
                             @endif
                         </button>
@@ -164,7 +164,7 @@
                         aria-label="{{ __('filament-chatbot::chatbot.close_conversations') }}"
                     ></button>
 
-                    <aside class="relative flex h-full w-[calc(100%-0.75rem)] max-w-[21rem] flex-col border-r border-gray-200/80 bg-white/98 shadow-[0_20px_40px_-32px_rgb(15_23_42/0.3)]">
+                    <aside class="relative flex h-full w-[calc(100%-0.75rem)] max-w-84 flex-col border-r border-gray-200/80 bg-white/98 shadow-[0_20px_40px_-32px_rgb(15_23_42/0.3)]">
                         <div class="flex items-center justify-between gap-3 border-b border-gray-200/70 px-4 py-3">
                             <div class="min-w-0">
                                 <div class="truncate text-sm font-semibold text-gray-900">{{ __('filament-chatbot::chatbot.conversations') }}</div>
@@ -182,22 +182,22 @@
 
                         <div class="min-h-0 flex-1 overflow-y-auto px-2 py-2">
                             <div class="space-y-1">
-                                @foreach ($conversationList as $conversation)
+                                @foreach ($this->conversations as $conversation)
                                     <button
                                         type="button"
-                                        wire:click="openConversation('{{ $conversation['id'] }}')"
+                                        wire:click="openConversation('{{ $conversation->id }}')"
                                         x-on:click="showConversationBrowser = false"
                                         @class([
                                             'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition',
-                                            'bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_8%,white)] text-gray-900 ring-1 ring-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_18%,white)]' => $conversation['is_active'],
-                                            'bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900' => ! $conversation['is_active'],
+                                            'bg-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_8%,white)] text-gray-900 ring-1 ring-[color-mix(in_srgb,var(--color-primary-500,#0BA284)_18%,white)]' => $conversation->id === $conversationId,
+                                            'bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900' => $conversation->id !== $conversationId,
                                         ])
                                     >
-                                        <span class="truncate text-[0.95rem] font-medium">{{ $conversation['title'] }}</span>
+                                        <span class="truncate text-[0.95rem] font-medium">{{ $conversation->title !== '' ? $conversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
 
                                         <span class="flex shrink-0 items-center gap-1.5">
-                                            @if ($conversation['is_streaming'])
-                                                <span class="inline-flex h-2 w-2 rounded-full bg-[var(--color-primary-500,#0BA284)]"></span>
+                                            @if (in_array($conversation->id, $this->streamingConversationIds, true))
+                                                <span class="inline-flex h-2 w-2 rounded-full bg-(--color-primary-500,#0BA284)"></span>
                                             @endif
                                         </span>
                                     </button>

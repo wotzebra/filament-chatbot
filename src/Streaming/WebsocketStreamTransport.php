@@ -10,6 +10,7 @@ use Throwable;
 use Wotz\FilamentChatbot\Contracts\StreamTransport;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Jobs\StreamAgentResponseJob;
+use Wotz\FilamentChatbot\Support\Chatbot\PreparePendingChat;
 
 class WebsocketStreamTransport implements StreamTransport
 {
@@ -24,8 +25,11 @@ class WebsocketStreamTransport implements StreamTransport
                 $message,
                 auth()->user()?->getAuthIdentifier(),
                 $chatbot?->getUserModel(),
-                [],
-                $this->buildOverrides($chatbot),
+                app(PreparePendingChat::class)->resolveOverrides(
+                    chatbot: $chatbot,
+                    rawContext: (array) request()->input('context', []),
+                    request: request(),
+                ),
             );
         }
 
@@ -51,7 +55,6 @@ class WebsocketStreamTransport implements StreamTransport
         return [
             'endpoint' => route('chatbot.stream'),
             'channel' => "{$prefix}.{$conversationId}",
-            'event' => 'chatbot.stream',
         ];
     }
 
@@ -70,32 +73,6 @@ class WebsocketStreamTransport implements StreamTransport
 
             return null;
         }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function buildOverrides(?ChatbotPlugin $chatbot): array
-    {
-        if ($chatbot === null) {
-            return [];
-        }
-
-        return [
-            'agent' => $chatbot->getAgentClass(),
-            'provider' => $chatbot->getProvider(),
-            'model' => $chatbot->getModel(),
-            'tools' => $chatbot->getTools(),
-            'context' => $this->resolveContext($chatbot),
-        ];
-    }
-
-    protected function resolveContext(ChatbotPlugin $chatbot): mixed
-    {
-        $resolver = $chatbot->getContextResolver();
-        $request = request();
-
-        return $resolver((array) $request->input('context', []), $request);
     }
 
     protected function hasActiveDuplicateStream(?ChatbotPlugin $chatbot, string $conversationId, string $message): bool

@@ -2,6 +2,7 @@
 
 namespace Wotz\FilamentChatbot\Jobs;
 
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Auth\User as AuthUser;
@@ -9,9 +10,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Auth;
-use Wotz\FilamentChatbot\Broadcasting\ChatbotStreamEvent;
-use Wotz\FilamentChatbot\Facades\Chat;
-use Wotz\FilamentChatbot\Support\Chatbot\StreamRunner;
+use Illuminate\Support\Facades\Broadcast;
+use Laravel\Ai\Streaming\Events\StreamEvent;
+use Throwable;
+use Wotz\FilamentChatbot\Support\Chatbot\ChatOverrides;
+use Wotz\FilamentChatbot\Support\Chatbot\FriendlyErrorMessage;
+use Wotz\FilamentChatbot\Support\Chatbot\PreparePendingChat;
 
 class StreamAgentResponseJob implements ShouldQueue
 {
@@ -20,17 +24,12 @@ class StreamAgentResponseJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    /**
-     * @param  array<string, mixed>  $context
-     * @param  array<string, mixed>  $overrides
-     */
     public function __construct(
         public string $conversationId,
         public string $message,
         public int|string|null $userId,
         public ?string $userModel,
-        public array $context = [],
-        public array $overrides = [],
+        public ?ChatOverrides $overrides = null,
     ) {
         $queue = config('filament-chatbot.stream.websocket.queue');
 
@@ -42,30 +41,45 @@ class StreamAgentResponseJob implements ShouldQueue
     public function handle(): void
     {
         $user = $this->resolveUser();
-        $pending = Chat::for($this->conversationId)
-            ->as($user)
-            ->applyOverrides($this->overrides);
-        $runner = app(StreamRunner::class);
 
-        $sink = fn (array $event) => broadcast(new ChatbotStreamEvent(
+        $pending = app(PreparePendingChat::class)->fromOverrides(
             conversationId: $this->conversationId,
-            type: (string) ($event['type'] ?? 'event'),
-            payload: $event,
-        ));
+            user: $user,
+            overrides: $this->overrides,
+        );
+
+        $channel = new PrivateChannel($this->channelName());
+        $response = $pending->streamResponse($this->message);
 
         try {
-            $result = $runner->run($this->conversationId, $user, fn () => $pending->streamEvents($this->message), $sink);
-
-            if (! $result['failed']) {
-                $pending->finalize($result['message']);
+            foreach ($response as $event) {
+                if ($event instanceof StreamEvent) {
+                    $event->broadcastNow($channel);
+                }
             }
-        } finally {
-            broadcast(new ChatbotStreamEvent(
-                conversationId: $this->conversationId,
-                type: 'done',
-                payload: ['type' => 'done'],
-            ));
+        } catch (Throwable $e) {
+            report($e);
+
+            Broadcast::on($channel)
+                ->as('text_delta')
+                ->with([
+                    'type' => 'text_delta',
+                    'delta' => FriendlyErrorMessage::resolve($e),
+                ])
+                ->sendNow();
+
+            Broadcast::on($channel)
+                ->as('stream_end')
+                ->with(['type' => 'stream_end'])
+                ->sendNow();
         }
+    }
+
+    protected function channelName(): string
+    {
+        $prefix = (string) config('filament-chatbot.stream.websocket.channel_prefix', 'chatbot.conversation');
+
+        return "{$prefix}.{$this->conversationId}";
     }
 
     protected function resolveUser(): mixed
