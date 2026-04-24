@@ -68,4 +68,19 @@ abstract class TestCase extends Orchestra
 
         return $user;
     }
+
+    protected function conversationKey(): string
+    {
+        return filament('chatbot')->getConversationKey();
+    }
+
+    protected function activeStreamsKey(): string
+    {
+        return $this->conversationKey() . '_active_streams';
+    }
+
+    protected function conversationIds(mixed $conversations): array
+    {
+        return collect($conversations)->pluck('id')->all();
+    }
 }

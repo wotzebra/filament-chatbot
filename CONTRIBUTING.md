@@ -20,7 +20,7 @@ composer install
 3. Run tests and static checks.
 
 ```bash
-vendor/bin/pest
+vendor/bin/phpunit
 vendor/bin/phpstan analyse
 vendor/bin/pint --test
 ```

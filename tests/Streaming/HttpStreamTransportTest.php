@@ -1,65 +1,85 @@
 <?php
 
+namespace Wotz\FilamentChatbot\Tests\Streaming;
+
+use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Facades\Context;
+use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Wotz\FilamentChatbot\Agents\Assistant;
 use Wotz\FilamentChatbot\Models\AgentConversation;
+use Wotz\FilamentChatbot\Tests\TestCase;
 
-beforeEach(function () {
-    config()->set('filament-chatbot.stream.transport', 'http');
+class HttpStreamTransportTest extends TestCase
+{
+    protected User $user;
 
-    Assistant::fake(['Hello from the AI!']);
+    protected function setUp(): void
+    {
+        parent::setUp();
 
-    $this->user = $this->makeTestUser();
+        config()->set('filament-chatbot.stream.transport', 'http');
 
-    Context::forgetHidden('chatbot.context');
-});
+        Assistant::fake(['Hello from the AI!']);
 
-it('returns a StreamedResponse with SSE headers', function () {
-    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $this->user = $this->makeTestUser();
 
-    $response = $this->actingAs($this->user)
-        ->post(route('chatbot.stream'), [
-            'message' => fake()->sentence(),
-            'conversation_id' => $conversation->id,
-        ]);
+        Context::forgetHidden('chatbot.context');
+    }
 
-    $response->assertOk();
+    #[Test]
+    public function it_returns_a_streamed_response_with_sse_headers(): void
+    {
+        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
 
-    expect($response->baseResponse)->toBeInstanceOf(StreamedResponse::class)
-        ->and($response->headers->get('Content-Type'))->toContain('text/event-stream')
-        ->and($response->headers->get('Cache-Control'))->toContain('no-cache')
-        ->and($response->headers->get('X-Accel-Buffering'))->toBe('no');
-});
+        $response = $this->actingAs($this->user)
+            ->post(route('chatbot.stream'), [
+                'message' => fake()->sentence(),
+                'conversation_id' => $conversation->id,
+            ]);
 
-it('emits SSE data lines and terminates with the [DONE] marker', function () {
-    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $response->assertOk();
 
-    $response = $this->actingAs($this->user)
-        ->post(route('chatbot.stream'), [
-            'message' => fake()->sentence(),
-            'conversation_id' => $conversation->id,
-        ]);
+        $this->assertInstanceOf(StreamedResponse::class, $response->baseResponse);
+        $this->assertStringContainsString('text/event-stream', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('no-cache', $response->headers->get('Cache-Control'));
+        $this->assertSame('no', $response->headers->get('X-Accel-Buffering'));
+    }
 
-    $body = $response->streamedContent();
+    #[Test]
+    public function it_emits_sse_data_lines_and_terminates_with_the_done_marker(): void
+    {
+        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
 
-    expect($body)->toContain('data: ')
-        ->and($body)->toContain('[DONE]');
-});
+        $response = $this->actingAs($this->user)
+            ->post(route('chatbot.stream'), [
+                'message' => fake()->sentence(),
+                'conversation_id' => $conversation->id,
+            ]);
 
-it('emits a friendly text_delta and [DONE] when the agent throws', function () {
-    Assistant::fake(fn () => throw new RuntimeException('upstream blew up'));
+        $body = $response->streamedContent();
 
-    $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $this->assertStringContainsString('data: ', $body);
+        $this->assertStringContainsString('[DONE]', $body);
+    }
 
-    $response = $this->actingAs($this->user)
-        ->post(route('chatbot.stream'), [
-            'message' => fake()->sentence(),
-            'conversation_id' => $conversation->id,
-        ]);
+    #[Test]
+    public function it_emits_a_friendly_text_delta_and_done_when_the_agent_throws(): void
+    {
+        Assistant::fake(fn () => throw new RuntimeException('upstream blew up'));
 
-    $body = $response->streamedContent();
+        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
 
-    expect($body)->toContain('text_delta')
-        ->and($body)->toContain('[DONE]');
-});
+        $response = $this->actingAs($this->user)
+            ->post(route('chatbot.stream'), [
+                'message' => fake()->sentence(),
+                'conversation_id' => $conversation->id,
+            ]);
+
+        $body = $response->streamedContent();
+
+        $this->assertStringContainsString('text_delta', $body);
+        $this->assertStringContainsString('[DONE]', $body);
+    }
+}

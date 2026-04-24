@@ -1,102 +1,149 @@
 <?php
 
+namespace Wotz\FilamentChatbot\Tests\Filament\Plugins;
+
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Http\Request;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Wotz\FilamentChatbot\Agents\Assistant;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Support\Chatbot\ContextResolver;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
+use Wotz\FilamentChatbot\Tests\TestCase;
 
-it('returns sensible defaults for chatbot ui settings', function () {
-    $plugin = ChatbotPlugin::make();
+class ChatbotPluginTest extends TestCase
+{
+    #[Test]
+    public function it_returns_sensible_defaults_for_chatbot_ui_settings(): void
+    {
+        $plugin = ChatbotPlugin::make();
 
-    expect($plugin->getBotName())->toBe('AI Assistant')
-        ->and($plugin->getWelcomeMessage())->toBe('Hello! How can I help you?')
-        ->and($plugin->getButtonText())->toBe('Open chatbot')
-        ->and($plugin->getButtonIcon())->toBe('heroicon-o-chat-bubble-left-right')
-        ->and($plugin->getChatWidth())->toBe('400px')
-        ->and($plugin->getChatHeight())->toBe('600px')
-        ->and($plugin->getLogoUrl())->toBeNull();
-});
+        $this->assertSame('AI Assistant', $plugin->getBotName());
+        $this->assertSame('Hello! How can I help you?', $plugin->getWelcomeMessage());
+        $this->assertSame('Open chatbot', $plugin->getButtonText());
+        $this->assertSame('heroicon-o-chat-bubble-left-right', $plugin->getButtonIcon());
+        $this->assertSame('400px', $plugin->getChatWidth());
+        $this->assertSame('600px', $plugin->getChatHeight());
+        $this->assertNull($plugin->getLogoUrl());
+    }
 
-it('reads agent, provider, model and enabled from config as fallback', function () {
-    config()->set('filament-chatbot.agent', Assistant::class);
-    config()->set('filament-chatbot.provider', $provider = fake()->word());
-    config()->set('filament-chatbot.model', $model = fake()->slug());
-    config()->set('filament-chatbot.enabled', false);
+    #[Test]
+    public function it_reads_agent_provider_model_and_enabled_from_config_as_fallback(): void
+    {
+        config()->set('filament-chatbot.agent', Assistant::class);
+        config()->set('filament-chatbot.provider', $provider = fake()->word());
+        config()->set('filament-chatbot.model', $model = fake()->slug());
+        config()->set('filament-chatbot.enabled', false);
 
-    $plugin = ChatbotPlugin::make();
+        $plugin = ChatbotPlugin::make();
 
-    expect($plugin->getAgentClass())->toBe(Assistant::class)
-        ->and($plugin->getProvider())->toBe($provider)
-        ->and($plugin->getModel())->toBe($model)
-        ->and($plugin->isEnabled())->toBeFalse();
-});
+        $this->assertSame(Assistant::class, $plugin->getAgentClass());
+        $this->assertSame($provider, $plugin->getProvider());
+        $this->assertSame($model, $plugin->getModel());
+        $this->assertFalse($plugin->isEnabled());
+    }
 
-it('stores panel tools configured through the plugin', function () {
-    $plugin = ChatbotPlugin::make()->tools([ExampleTool::class]);
+    #[Test]
+    public function it_stores_panel_tools_configured_through_the_plugin(): void
+    {
+        $plugin = ChatbotPlugin::make()->tools([ExampleTool::class]);
 
-    expect($plugin->getTools())->toBe([ExampleTool::class]);
-});
+        $this->assertSame([ExampleTool::class], $plugin->getTools());
+    }
 
-it('throws when no agent is configured', function () {
-    config()->set('filament-chatbot.agent', null);
+    #[Test]
+    public function it_throws_when_no_agent_is_configured(): void
+    {
+        config()->set('filament-chatbot.agent', null);
 
-    expect(fn () => ChatbotPlugin::make()->getAgentClass())
-        ->toThrow(RuntimeException::class);
-});
+        $this->expectException(RuntimeException::class);
 
-it('defaults isEnabled to an auth check when config is null', function () {
-    config()->set('filament-chatbot.enabled', null);
+        ChatbotPlugin::make()->getAgentClass();
+    }
 
-    $plugin = ChatbotPlugin::make();
+    #[Test]
+    public function it_defaults_is_enabled_to_an_auth_check_when_config_is_null(): void
+    {
+        config()->set('filament-chatbot.enabled', null);
 
-    expect($plugin->isEnabled())->toBeFalse();
+        $plugin = ChatbotPlugin::make();
 
-    $user = new User;
-    $user->id = fake()->randomNumber();
-    auth()->setUser($user);
+        $this->assertFalse($plugin->isEnabled());
 
-    expect($plugin->isEnabled())->toBeTrue();
-});
+        $user = new User;
+        $user->id = fake()->randomNumber();
+        auth()->setUser($user);
 
-it('resolves setters from a raw value or closure', function (string $setter, string $getter, mixed $value) {
-    expect(ChatbotPlugin::make()->$setter($value)->$getter())->toBe($value);
-    expect(ChatbotPlugin::make()->$setter(fn () => $value)->$getter())->toBe($value);
-})->with([
-    'agent' => ['agent', 'getAgentClass', Assistant::class],
-    'botName' => ['botName', 'getBotName', 'My Bot'],
-    'welcomeMessage' => ['welcomeMessage', 'getWelcomeMessage', 'Welcome'],
-    'buttonText' => ['buttonText', 'getButtonText', 'Open chat'],
-    'buttonIcon' => ['buttonIcon', 'getButtonIcon', 'heroicon-o-bell'],
-    'chatWidth' => ['chatWidth', 'getChatWidth', '500px'],
-    'chatHeight' => ['chatHeight', 'getChatHeight', '700px'],
-    'provider' => ['provider', 'getProvider', 'openai'],
-    'model' => ['model', 'getModel', 'gpt-4'],
-    'logoUrl' => ['logoUrl', 'getLogoUrl', '/path/to/logo.png'],
-    'conversationKey' => ['conversationKey', 'getConversationKey', 'custom_key'],
-]);
+        $this->assertTrue($plugin->isEnabled());
+    }
 
-it('resolves isEnabled from a closure', function () {
-    expect(ChatbotPlugin::make()->enabled(fn () => true)->isEnabled())->toBeTrue()
-        ->and(ChatbotPlugin::make()->enabled(fn () => false)->isEnabled())->toBeFalse();
-});
+    #[Test]
+    #[DataProvider('setterProvider')]
+    public function it_resolves_setters_from_a_raw_value_or_closure(string $setter, string $getter, mixed $value): void
+    {
+        $this->assertSame($value, ChatbotPlugin::make()->$setter($value)->$getter());
+        $this->assertSame($value, ChatbotPlugin::make()->$setter(fn () => $value)->$getter());
+    }
 
-it('defaults the context resolver to the ContextResolver class', function () {
-    expect(ChatbotPlugin::make()->getContextResolver())->toBeInstanceOf(ContextResolver::class);
-});
+    public static function setterProvider(): array
+    {
+        return [
+            'agent' => ['agent', 'getAgentClass', Assistant::class],
+            'botName' => ['botName', 'getBotName', 'My Bot'],
+            'welcomeMessage' => ['welcomeMessage', 'getWelcomeMessage', 'Welcome'],
+            'buttonText' => ['buttonText', 'getButtonText', 'Open chat'],
+            'buttonIcon' => ['buttonIcon', 'getButtonIcon', 'heroicon-o-bell'],
+            'chatWidth' => ['chatWidth', 'getChatWidth', '500px'],
+            'chatHeight' => ['chatHeight', 'getChatHeight', '700px'],
+            'provider' => ['provider', 'getProvider', 'openai'],
+            'model' => ['model', 'getModel', 'gpt-4'],
+            'logoUrl' => ['logoUrl', 'getLogoUrl', '/path/to/logo.png'],
+            'conversationKey' => ['conversationKey', 'getConversationKey', 'custom_key'],
+        ];
+    }
 
-it('accepts a closure as context resolver', function () {
-    $plugin = ChatbotPlugin::make()
-        ->contextResolver(fn (array $context, Request $request) => 'resolved: ' . json_encode($context));
+    #[Test]
+    public function it_resolves_is_enabled_from_a_closure(): void
+    {
+        $this->assertTrue(ChatbotPlugin::make()->enabled(fn () => true)->isEnabled());
+        $this->assertFalse(ChatbotPlugin::make()->enabled(fn () => false)->isEnabled());
+    }
 
-    $resolved = ($plugin->getContextResolver())(['foo' => 'bar'], Request::create('/'));
+    #[Test]
+    public function it_defaults_the_context_resolver_to_the_context_resolver_class(): void
+    {
+        $this->assertInstanceOf(ContextResolver::class, ChatbotPlugin::make()->getContextResolver());
+    }
 
-    expect($resolved)->toBe('resolved: {"foo":"bar"}');
-});
+    #[Test]
+    public function it_accepts_a_closure_as_context_resolver(): void
+    {
+        $plugin = ChatbotPlugin::make()
+            ->contextResolver(fn (array $context, Request $request) => 'resolved: ' . json_encode($context));
 
-it('accepts a class-string as context resolver', function () {
-    $plugin = ChatbotPlugin::make()->contextResolver(ContextResolver::class);
+        $resolved = ($plugin->getContextResolver())(['foo' => 'bar'], Request::create('/'));
 
-    expect($plugin->getContextResolver())->toBeInstanceOf(ContextResolver::class);
-});
+        $this->assertSame('resolved: {"foo":"bar"}', $resolved);
+    }
+
+    #[Test]
+    public function it_accepts_a_class_string_as_context_resolver(): void
+    {
+        $plugin = ChatbotPlugin::make()->contextResolver(ContextResolver::class);
+
+        $this->assertInstanceOf(ContextResolver::class, $plugin->getContextResolver());
+    }
+
+    #[Test]
+    public function it_defaults_the_conversation_session_key_to_the_current_panel_id(): void
+    {
+        $panelId = filament()->getCurrentPanel()->getId();
+
+        $this->assertSame(
+            "ai_chatbot_conversation_id_{$panelId}",
+            ChatbotPlugin::make()->getConversationKey(),
+        );
+    }
+}
