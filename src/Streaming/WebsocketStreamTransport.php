@@ -4,9 +4,7 @@ namespace Wotz\FilamentChatbot\Streaming;
 
 use Closure;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Throwable;
 use Wotz\FilamentChatbot\Contracts\StreamTransport;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Jobs\StreamAgentResponseJob;
