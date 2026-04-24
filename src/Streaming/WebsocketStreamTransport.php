@@ -16,7 +16,8 @@ class WebsocketStreamTransport implements StreamTransport
 {
     public function start(string $conversationId, string $message, Closure $eventsFactory): SymfonyResponse
     {
-        $chatbot = $this->chatbot();
+        /** @var ChatbotPlugin $chatbot */
+        $chatbot = filament('chatbot');
         $hasActiveDuplicateStream = $this->hasActiveDuplicateStream($chatbot, $conversationId, $message);
 
         if (! $hasActiveDuplicateStream) {
@@ -32,8 +33,6 @@ class WebsocketStreamTransport implements StreamTransport
                 ),
             );
         }
-
-        $this->logStart($conversationId, $message, $hasActiveDuplicateStream);
 
         return new JsonResponse([
             'accepted' => true,
@@ -58,23 +57,6 @@ class WebsocketStreamTransport implements StreamTransport
         ];
     }
 
-    protected function chatbot(): ?ChatbotPlugin
-    {
-        try {
-            /** @var ChatbotPlugin $plugin */
-            $plugin = filament('chatbot');
-
-            return $plugin;
-        } catch (Throwable $e) {
-            Log::debug('filament-chatbot.websocket.plugin-unavailable', [
-                'exception' => $e::class,
-                'message' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
-    }
-
     protected function hasActiveDuplicateStream(?ChatbotPlugin $chatbot, string $conversationId, string $message): bool
     {
         if ($chatbot === null || ! session()->isStarted()) {
@@ -90,21 +72,5 @@ class WebsocketStreamTransport implements StreamTransport
         $activeMessage = trim((string) ($activeStreams[$conversationId]['message'] ?? ''));
 
         return $activeMessage !== '' && $activeMessage === trim($message);
-    }
-
-    protected function logStart(string $conversationId, string $message, bool $duplicateSkipped): void
-    {
-        if (! app()->environment(['local', 'testing'])) {
-            return;
-        }
-
-        Log::debug('filament-chatbot.websocket.start', [
-            'conversation_id' => $conversationId,
-            'message' => $message,
-            'duplicate_skipped' => $duplicateSkipped,
-            'session_id' => session()->getId(),
-            'user_id' => auth()->user()?->getAuthIdentifier(),
-            'transport' => $this->name(),
-        ]);
     }
 }
