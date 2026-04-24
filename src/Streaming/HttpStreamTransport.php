@@ -53,7 +53,7 @@ class HttpStreamTransport implements StreamTransport
 
     protected function emit(string $payload): void
     {
-        echo 'data: '.$payload."\n\n";
+        echo 'data: ' . $payload . "\n\n";
 
         if (ob_get_level() > 0) {
             @ob_flush();
