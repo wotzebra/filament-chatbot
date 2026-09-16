@@ -9,5 +9,6 @@ class ViewConversation extends ViewRecord
 {
     protected static string $resource = ConversationResource::class;
 
-    protected string $view = 'filament-chatbot::pages.view-conversation';
+    /** @var view-string */
+    protected static string $view = 'filament-chatbot::pages.view-conversation'; // @phpstan-ignore property.defaultValue (package view namespace is only registered at runtime)
 }

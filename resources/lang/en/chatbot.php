@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'subtitle' => 'Ask a quick question or continue the conversation.',
     'new_session' => 'New session',
     'move_window' => 'Move window',
     'close_chat' => 'Close chat',

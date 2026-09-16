@@ -1,4 +1,4 @@
-<div class="border-t border-gray-200/90 bg-white/88 {{ $standalone ? 'p-4' : 'p-3.5' }} backdrop-blur-lg">
+<div class="border-t border-gray-200/90 bg-white/[0.88] {{ $standalone ? 'p-4' : 'p-3.5' }} backdrop-blur-lg">
     <div
         x-data="{
             submitting: false,
@@ -45,7 +45,7 @@
                     wire:model.live="question"
                     placeholder="{{ __('filament-chatbot::chatbot.placeholder') }}"
                     autofocus
-                    class="block max-h-40 w-full resize-none border-0 bg-transparent px-3 py-2 text-sm text-gray-950 outline-hidden placeholder:text-gray-400 disabled:cursor-progress"
+                    class="block max-h-40 w-full resize-none border-0 bg-transparent px-3 py-2 text-sm text-gray-950 outline-none placeholder:text-gray-400 disabled:cursor-progress"
                     style="height: 40px;"
                     id="chatbot-input">
                 </textarea>

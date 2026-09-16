@@ -2,7 +2,7 @@
 
     @if (! $standalone && $messages === [] && ! $isStreaming)
         <div class="flex flex-col items-start gap-3.5 rounded-3xl border border-gray-200 bg-white/90 p-4 shadow-xl">
-            <div class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-(--primary-tint-15) text-(--color-primary-700,#075748)">
+            <div class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--primary-tint-15)] text-[rgb(var(--primary-700))]">
                 <x-heroicon-m-sparkles class="h-4 w-4" />
             </div>
 
@@ -19,7 +19,7 @@
         <div wire:key="chatbot-message-{{ $loop->index }}">
             @if ($message['role'] === \Laravel\Ai\Messages\MessageRole::User->value)
                 <div class="flex items-start justify-end gap-2.5">
-                    <div class="max-w-3/4">
+                    <div class="max-w-[75%]">
                         <div class="chatbot-bubble chatbot-bubble-user prose prose-sm prose-invert max-w-none rounded-2xl rounded-br-md px-4 py-3 text-sm leading-6 text-white shadow-lg">
                             {!! Str::markdown($message['content']) !!}
                         </div>
@@ -33,7 +33,7 @@
                     @if ($logoUrl && $logoUrl !== '')
                         <img src="{{ $logoUrl }}" alt="{{ $name ?: 'AI' }}" class="mt-0.5 h-7 w-7 shrink-0 rounded-full object-cover">
                     @else
-                        <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-(--primary-tint-15) text-(--color-primary-700,#075748)">
+                        <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary-tint-15)] text-[rgb(var(--primary-700))]">
                             <x-heroicon-m-sparkles class="h-3.5 w-3.5" />
                         </div>
                     @endif
@@ -257,7 +257,7 @@
             @if ($logoUrl && $logoUrl !== '')
                 <img src="{{ $logoUrl }}" alt="{{ $name ?: 'AI' }}" class="mt-0.5 h-7 w-7 shrink-0 rounded-full object-cover">
             @else
-                <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-(--primary-tint-15) text-(--color-primary-700,#075748)">
+                <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary-tint-15)] text-[rgb(var(--primary-700))]">
                     <x-heroicon-m-sparkles class="h-3.5 w-3.5" />
                 </div>
             @endif

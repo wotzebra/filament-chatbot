@@ -31,12 +31,12 @@
             id="chat-window">
 
             {{-- Header --}}
-            <div class="flex items-center justify-between gap-3 border-b border-gray-200/90 bg-white/82 px-4 py-3 backdrop-blur-lg">
+            <div class="flex items-center justify-between gap-3 border-b border-gray-200/90 bg-white/[0.82] px-4 py-3 backdrop-blur-lg">
                 <div class="flex min-w-0 items-center gap-3">
                     @if ($logoUrl && $logoUrl !== '')
                         <img src="{{ $logoUrl }}" alt="{{ $name }}" class="h-7 w-7 shrink-0 rounded-full object-cover">
                     @else
-                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-(--primary-tint-15) text-(--color-primary-700,#075748)">
+                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary-tint-15)] text-[rgb(var(--primary-700))]">
                             <x-heroicon-m-sparkles class="h-3.5 w-3.5" />
                         </div>
                     @endif
@@ -47,23 +47,23 @@
 
                             @if (! empty($pageContext))
                                 <span
-                                    class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-(--primary-tint-15) text-(--color-primary-700,#075748)"
+                                    class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--primary-tint-15)] text-[rgb(var(--primary-700))]"
                                     title="{{ __('filament-chatbot::chatbot.page_context_tooltip') }}"
                                 >
                                     <x-heroicon-m-link class="h-3 w-3" />
                                 </span>
                             @endif
                         </div>
-                        <span class="hidden truncate text-xs leading-5 text-gray-500 sm:block">{{ __('Ask a quick question or continue the conversation.') }}</span>
+                        <span class="hidden truncate text-xs leading-5 text-gray-500 sm:block">{{ __('filament-chatbot::chatbot.subtitle') }}</span>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50/85 p-0.5">
-                    @if ($conversationId)
+                <div class="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50/[0.85] p-0.5">
+                    @if ($this->fullscreenUrl)
                         <x-filament::icon-button
                             color="gray"
                             icon="heroicon-o-arrows-pointing-out"
-                            :href="\Wotz\FilamentChatbot\Filament\Resources\ConversationResource::getUrl('view', ['record' => $conversationId])"
+                            :href="$this->fullscreenUrl"
                             tag="a"
                             x-on:click="$wire.panelHidden = true"
                             :label="__('filament-chatbot::chatbot.open_fullscreen')"
@@ -98,7 +98,7 @@
                         wire:click="clearChat()"
                         @class([
                             'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition',
-                            'border-(--primary-tint-25) bg-(--primary-tint-10) text-(--color-primary-700,#075748)' => $conversationId === null,
+                            'border-[var(--primary-tint-25)] bg-[var(--primary-tint-10)] text-[rgb(var(--primary-700))]' => $conversationId === null,
                             'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900' => $conversationId !== null,
                         ])
                         aria-label="{{ __('filament-chatbot::chatbot.new_conversation') }}"
@@ -120,11 +120,11 @@
                     </button>
 
                     @if ($activeConversation)
-                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-(--primary-tint-10) px-2.5 py-1 text-xs font-medium text-(--color-primary-700,#075748)">
-                            <span class="max-w-28 truncate">{{ $activeConversation->title !== '' ? $activeConversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
+                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--primary-tint-10)] px-2.5 py-1 text-xs font-medium text-[rgb(var(--primary-700))]">
+                            <span class="max-w-[7rem] truncate">{{ $activeConversation->title !== '' ? $activeConversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
 
                             @if ($isStreaming)
-                                <span class="inline-flex h-2 w-2 rounded-full bg-(--color-primary-500,#0BA284)"></span>
+                                <span class="inline-flex h-2 w-2 rounded-full bg-[rgb(var(--primary-500))]"></span>
                             @endif
                         </span>
                     @endif
@@ -140,10 +140,10 @@
                                 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900',
                         ])
                     >
-                            <span class="max-w-24 truncate">{{ $conversation->title !== '' ? $conversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
+                            <span class="max-w-[6rem] truncate">{{ $conversation->title !== '' ? $conversation->title : __('filament-chatbot::chatbot.conversation') }}</span>
 
                             @if (in_array($conversation->id, $this->streamingConversationIds, true))
-                                <span class="inline-flex h-2 w-2 rounded-full bg-(--color-primary-500,#0BA284)"></span>
+                                <span class="inline-flex h-2 w-2 rounded-full bg-[rgb(var(--primary-500))]"></span>
                             @endif
                         </button>
                     @endforeach
@@ -159,12 +159,12 @@
                 >
                     <button
                         type="button"
-                        class="absolute inset-0 bg-white/55 backdrop-blur-sm"
+                        class="absolute inset-0 bg-white/[0.55] backdrop-blur-sm"
                         x-on:click="showConversationBrowser = false"
                         aria-label="{{ __('filament-chatbot::chatbot.close_conversations') }}"
                     ></button>
 
-                    <aside class="relative flex h-full w-[calc(100%-0.75rem)] max-w-84 flex-col border-r border-gray-200/80 bg-white/98 shadow-xl">
+                    <aside class="relative flex h-full w-[calc(100%-0.75rem)] max-w-[21rem] flex-col border-r border-gray-200/80 bg-white/[0.98] shadow-xl">
                         <div class="flex items-center justify-between gap-3 border-b border-gray-200/70 px-4 py-3">
                             <div class="min-w-0">
                                 <div class="truncate text-sm font-semibold text-gray-900">{{ __('filament-chatbot::chatbot.conversations') }}</div>
@@ -189,7 +189,7 @@
                                         x-on:click="showConversationBrowser = false"
                                         @class([
                                             'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition',
-                                            'bg-(--primary-tint-8) text-gray-900 ring-1 ring-(--primary-tint-18)' => $conversation->id === $conversationId,
+                                            'bg-[var(--primary-tint-8)] text-gray-900 ring-1 ring-[var(--primary-tint-18)]' => $conversation->id === $conversationId,
                                             'bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900' => $conversation->id !== $conversationId,
                                         ])
                                     >
@@ -197,7 +197,7 @@
 
                                         <span class="flex shrink-0 items-center gap-1.5">
                                             @if (in_array($conversation->id, $this->streamingConversationIds, true))
-                                                <span class="inline-flex h-2 w-2 rounded-full bg-(--color-primary-500,#0BA284)"></span>
+                                                <span class="inline-flex h-2 w-2 rounded-full bg-[rgb(var(--primary-500))]"></span>
                                             @endif
                                         </span>
                                     </button>

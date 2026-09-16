@@ -248,7 +248,7 @@ class ChatbotPlugin implements Plugin
     {
         return (string) $this->resolveProp(
             $this->userModel,
-            config('filament-chatbot.user_model', config('auth.providers.users.model')),
+            config('filament-chatbot.user_model') ?? config('auth.providers.users.model'),
         );
     }
 

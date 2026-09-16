@@ -4,9 +4,15 @@ namespace Wotz\FilamentChatbot\Tests;
 
 use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
 use BladeUI\Icons\BladeIconsServiceProvider;
+use Filament\Actions\ActionsServiceProvider;
 use Filament\Facades\Filament;
 use Filament\FilamentServiceProvider;
+use Filament\Forms\FormsServiceProvider;
+use Filament\Infolists\InfolistsServiceProvider;
+use Filament\Notifications\NotificationsServiceProvider;
 use Filament\Support\SupportServiceProvider;
+use Filament\Tables\TablesServiceProvider;
+use Filament\Widgets\WidgetsServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,6 +21,7 @@ use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Providers\FilamentChatbotServiceProvider;
+use Wotz\FilamentChatbot\Tests\Fakes\BarePanelProvider;
 use Wotz\FilamentChatbot\Tests\Fakes\TestPanelProvider;
 
 abstract class TestCase extends Orchestra
@@ -42,11 +49,18 @@ abstract class TestCase extends Orchestra
             BladeIconsServiceProvider::class,
             BladeHeroiconsServiceProvider::class,
             SupportServiceProvider::class,
+            ActionsServiceProvider::class,
+            FormsServiceProvider::class,
+            InfolistsServiceProvider::class,
+            NotificationsServiceProvider::class,
+            TablesServiceProvider::class,
+            WidgetsServiceProvider::class,
             FilamentServiceProvider::class,
             LivewireServiceProvider::class,
             AiServiceProvider::class,
             FilamentChatbotServiceProvider::class,
             TestPanelProvider::class,
+            BarePanelProvider::class,
         ];
     }
 
