@@ -24,6 +24,11 @@ class AgentConversationMessage extends Model
     /** @use HasFactory<AgentConversationMessageFactory> */
     use HasFactory;
 
+    protected static function newFactory(): AgentConversationMessageFactory
+    {
+        return AgentConversationMessageFactory::new();
+    }
+
     use HasUuids;
 
     protected $guarded = [];

@@ -52,3 +52,15 @@ $panel->plugin(
 ```
 
 Tools registered this way are only available in that specific panel. If the same tool class is registered both globally and locally, it will only be passed to the agent once.
+
+## MCP server tools
+
+With Laravel AI 0.9 or later, tools built for [Laravel MCP](https://laravel.com/docs/12.x/mcp) (`Laravel\Mcp\Server\Tool`) can be registered directly, globally or per panel. Laravel AI wraps them for the agent, so the same tool classes serve both your MCP server and the chatbot:
+
+```php
+ChatbotPlugin::make()->tools([
+    \App\Mcp\Tools\Read\ListSeasonsTool::class,
+])
+```
+
+MCP tools are wrapped in `Wotz\FilamentChatbot\Support\Chatbot\McpTool`. A `ValidationException` thrown by `$request->validate()` or a `ModelNotFoundException` becomes an error message for the model ("MCP tool error: Invalid arguments. …"), the same way the MCP server reports them, so a wrong argument never aborts the conversation.

@@ -1,17 +1,14 @@
-@layer theme, utilities;
-
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
-@plugin "@tailwindcss/typography";
-
-@source "../views/**/*.blade.php";
+/*
+ * Plugin-specific styles only. The Tailwind utility classes used in the views
+ * are compiled by the consuming app's Filament theme (see the installation docs).
+ */
 
 :root {
-    --primary-tint-8: color-mix(in srgb, var(--color-primary-500, #0BA284) 8%, white);
-    --primary-tint-10: color-mix(in srgb, var(--color-primary-500, #0BA284) 10%, white);
-    --primary-tint-15: color-mix(in srgb, var(--color-primary-500, #0BA284) 15%, white);
-    --primary-tint-18: color-mix(in srgb, var(--color-primary-500, #0BA284) 18%, white);
-    --primary-tint-25: color-mix(in srgb, var(--color-primary-500, #0BA284) 25%, white);
+    --primary-tint-8: color-mix(in srgb, rgb(var(--primary-500)) 8%, white);
+    --primary-tint-10: color-mix(in srgb, rgb(var(--primary-500)) 10%, white);
+    --primary-tint-15: color-mix(in srgb, rgb(var(--primary-500)) 15%, white);
+    --primary-tint-18: color-mix(in srgb, rgb(var(--primary-500)) 18%, white);
+    --primary-tint-25: color-mix(in srgb, rgb(var(--primary-500)) 25%, white);
 }
 
 [x-cloak] {
@@ -28,7 +25,7 @@
 }
 
 .chatbot-bubble-user {
-    background-image: linear-gradient(135deg, var(--color-primary-600, #0A7B65), var(--color-primary-500, #0BA284));
+    background-image: linear-gradient(135deg, rgb(var(--primary-600)), rgb(var(--primary-500)));
 }
 
 .chatbot-messages {

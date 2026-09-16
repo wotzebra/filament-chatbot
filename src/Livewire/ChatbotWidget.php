@@ -11,6 +11,8 @@ use Livewire\Component;
 use Wotz\FilamentChatbot\Contracts\StreamTransport;
 use Wotz\FilamentChatbot\Facades\Chat;
 use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
+use Wotz\FilamentChatbot\Filament\Plugins\ChatbotResourcePlugin;
+use Wotz\FilamentChatbot\Filament\Resources\ConversationResource;
 use Wotz\FilamentChatbot\Livewire\Concerns\HasAppearance;
 use Wotz\FilamentChatbot\Livewire\Concerns\HasPageContext;
 use Wotz\FilamentChatbot\Livewire\Concerns\HasStreamingState;
@@ -131,6 +133,26 @@ class ChatbotWidget extends Component
     public function render(): View
     {
         return view('filament-chatbot::chatbot-widget');
+    }
+
+    /**
+     * The fullscreen URL of the active conversation, or null when the
+     * conversation resource is not registered on the current panel.
+     */
+    #[Computed]
+    public function fullscreenUrl(): ?string
+    {
+        if ($this->conversationId === null) {
+            return null;
+        }
+
+        $panel = filament()->getCurrentPanel();
+
+        if ($panel === null || ! $panel->hasPlugin((new ChatbotResourcePlugin)->getId())) {
+            return null;
+        }
+
+        return ConversationResource::getUrl('view', ['record' => $this->conversationId], panel: $panel->getId());
     }
 
     #[Computed]

@@ -3,13 +3,17 @@
 namespace Wotz\FilamentChatbot\Support\Chatbot;
 
 use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Tools\McpServerTool;
 use RuntimeException;
 
 class ToolRegistry
 {
     /**
+     * Resolve the configured tools: Laravel AI tools, or MCP server tools
+     * (`Laravel\Mcp\Server\Tool`, wrapped in McpTool) when the installed Laravel AI version supports them.
+     *
      * @param  array<int, mixed>  $extraTools
-     * @return array<int, Tool>
+     * @return array<int, object>
      */
     public function resolveTools(array $extraTools = []): array
     {
@@ -18,16 +22,22 @@ class ToolRegistry
         return collect([...$configTools, ...$extraTools])
             ->map(fn (mixed $tool) => is_object($tool) ? $tool : app($tool))
             ->each(function (mixed $tool): void {
-                if (! $tool instanceof Tool) {
+                if (! $tool instanceof Tool && ! $this->isMcpServerTool($tool)) {
                     throw new RuntimeException(sprintf(
-                        'Chatbot tool [%s] must implement %s.',
+                        'Chatbot tool [%s] must implement %s or be an MCP server tool.',
                         $tool::class,
                         Tool::class,
                     ));
                 }
             })
-            ->unique(fn (Tool $tool) => $tool::class)
+            ->map(fn (object $tool): object => $this->isMcpServerTool($tool) ? new McpTool($tool) : $tool)
+            ->unique(fn (object $tool): string => $tool instanceof McpTool ? $tool->underlying()::class : $tool::class)
             ->values()
             ->all();
+    }
+
+    protected function isMcpServerTool(mixed $tool): bool
+    {
+        return class_exists(McpServerTool::class) && McpServerTool::supports($tool);
     }
 }

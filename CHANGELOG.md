@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Filament v3 support on the `feature/filament-v3` branch: `ConversationResource` uses the v3 `Infolist` API, the widget views use Tailwind v3 syntax and Filament v3 colour variables, and the package no longer ships compiled Tailwind utilities: on v3 the consuming app's theme compiles the widget views (add them to the theme's `content`), because a second utility stylesheet loaded after the theme overrides Filament's responsive `lg:` variants and switches the whole panel to the mobile layout.
+
+- Dutch translations (`resources/lang/nl/chatbot.php`); the widget subtitle is now the translatable key `chatbot.subtitle` instead of a hardcoded English string.
+
+- Support for `laravel/ai` 0.9 and for registering Laravel MCP server tools (`Laravel\Mcp\Server\Tool`) as chatbot tools. They are wrapped in `McpTool`, which turns validation failures and missing records into a tool error the model can act on instead of aborting the stream.
+
+- Messages show the avatar and name above the bubble instead of next to it, so wide content such as tables gets the full width of the window.
+
+### Fixed
+
+- `AgentConversation` and `AgentConversationMessage` define `newFactory()`, so `AgentConversation::factory()` also works from a consuming application's tests.
+- The widget no longer throws `Route [...conversations.view] not defined` when a conversation is active and `ChatbotResourcePlugin` is not registered on the panel: the fullscreen button is only rendered when the resource is available.
+- `ChatbotPlugin::getUserModel()` now falls back to the default auth provider model when `user_model` is published as `null` in the config file, instead of resolving to an empty class name.
+
 - Configurable stream transport (`http` or `websocket`). The WebSocket transport uses Laravel Reverb broadcasting to deliver streaming AI responses on private per-conversation channels, enabling realtime server-to-UI pushes alongside the existing SSE transport. Selected via `FILAMENT_CHATBOT_STREAM_TRANSPORT`; defaults to `http` for backwards compatibility.
 
 ## [0.2.0]
