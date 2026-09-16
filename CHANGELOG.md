@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dutch translations (`resources/lang/nl/chatbot.php`); the widget subtitle is now the translatable key `chatbot.subtitle` instead of a hardcoded English string.
 
-- Support for `laravel/ai` 0.9 and for registering Laravel MCP server tools (`Laravel\Mcp\Server\Tool`) as chatbot tools.
+- Support for `laravel/ai` 0.9 and for registering Laravel MCP server tools (`Laravel\Mcp\Server\Tool`) as chatbot tools. They are wrapped in `McpTool`, which turns validation failures and missing records into a tool error the model can act on instead of aborting the stream.
 
 ### Fixed
 

@@ -62,3 +62,5 @@ ChatbotPlugin::make()->tools([
     \App\Mcp\Tools\Read\ListSeasonsTool::class,
 ])
 ```
+
+MCP tools are wrapped in `Wotz\FilamentChatbot\Support\Chatbot\McpTool`. A `ValidationException` thrown by `$request->validate()` or a `ModelNotFoundException` becomes an error message for the model ("MCP tool error: Invalid arguments. …"), the same way the MCP server reports them, so a wrong argument never aborts the conversation.

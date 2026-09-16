@@ -5,6 +5,7 @@ namespace Wotz\FilamentChatbot\Tests\Support\Chatbot;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use stdClass;
+use Wotz\FilamentChatbot\Support\Chatbot\McpTool;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleMcpTool;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
@@ -68,6 +69,7 @@ class ToolRegistryTest extends TestCase
         $tools = app(ToolRegistry::class)->resolveTools();
 
         $this->assertCount(1, $tools);
-        $this->assertInstanceOf(ExampleMcpTool::class, $tools[0]);
+        $this->assertInstanceOf(McpTool::class, $tools[0]);
+        $this->assertInstanceOf(ExampleMcpTool::class, $tools[0]->underlying());
     }
 }

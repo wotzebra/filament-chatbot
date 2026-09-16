@@ -10,7 +10,7 @@ class ToolRegistry
 {
     /**
      * Resolve the configured tools: Laravel AI tools, or MCP server tools
-     * (`Laravel\Mcp\Server\Tool`) when the installed Laravel AI version wraps them.
+     * (`Laravel\Mcp\Server\Tool`, wrapped in McpTool) when the installed Laravel AI version supports them.
      *
      * @param  array<int, mixed>  $extraTools
      * @return array<int, object>
@@ -30,7 +30,8 @@ class ToolRegistry
                     ));
                 }
             })
-            ->unique(fn (object $tool) => $tool::class)
+            ->map(fn (object $tool): object => $this->isMcpServerTool($tool) ? new McpTool($tool) : $tool)
+            ->unique(fn (object $tool): string => $tool instanceof McpTool ? $tool->underlying()::class : $tool::class)
             ->values()
             ->all();
     }
