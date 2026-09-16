@@ -6,6 +6,7 @@ use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use stdClass;
 use Wotz\FilamentChatbot\Support\Chatbot\ToolRegistry;
+use Wotz\FilamentChatbot\Tests\Fakes\ExampleMcpTool;
 use Wotz\FilamentChatbot\Tests\Fakes\ExampleTool;
 use Wotz\FilamentChatbot\Tests\TestCase;
 
@@ -57,5 +58,16 @@ class ToolRegistryTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         app(ToolRegistry::class)->resolveTools();
+    }
+
+    #[Test]
+    public function it_accepts_mcp_server_tools(): void
+    {
+        config()->set('filament-chatbot.tools', [ExampleMcpTool::class]);
+
+        $tools = app(ToolRegistry::class)->resolveTools();
+
+        $this->assertCount(1, $tools);
+        $this->assertInstanceOf(ExampleMcpTool::class, $tools[0]);
     }
 }

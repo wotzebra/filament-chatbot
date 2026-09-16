@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dutch translations (`resources/lang/nl/chatbot.php`); the widget subtitle is now the translatable key `chatbot.subtitle` instead of a hardcoded English string.
 
+- Support for `laravel/ai` 0.9 and for registering Laravel MCP server tools (`Laravel\Mcp\Server\Tool`) as chatbot tools.
+
 ### Fixed
 
 - `AgentConversation` and `AgentConversationMessage` define `newFactory()`, so `AgentConversation::factory()` also works from a consuming application's tests.
