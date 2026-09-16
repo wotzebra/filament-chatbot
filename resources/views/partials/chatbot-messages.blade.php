@@ -1,4 +1,4 @@
-<div id="chatbot-messages" wire:scroll wire:key="chatbot-messages" class="chatbot-messages flex flex-1 flex-col gap-4 overflow-y-auto {{ $standalone ? 'px-6 py-4' : 'px-4 pt-4 pb-3.5' }}">
+<div id="chatbot-messages" wire:key="chatbot-messages" class="chatbot-messages flex flex-1 flex-col gap-4 overflow-y-auto {{ $standalone ? 'px-6 py-4' : 'px-4 pt-4 pb-3.5' }}">
 
     @if (! $standalone && $messages === [] && ! $isStreaming)
         <div class="flex flex-col items-start gap-3.5 rounded-3xl border border-gray-200 bg-white/90 p-4 shadow-xl">
