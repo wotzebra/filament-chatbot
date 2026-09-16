@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support for `laravel/ai` 0.9 and for registering Laravel MCP server tools (`Laravel\Mcp\Server\Tool`) as chatbot tools. They are wrapped in `McpTool`, which turns validation failures and missing records into a tool error the model can act on instead of aborting the stream.
 
+- Messages show the avatar and name above the bubble instead of next to it, so wide content such as tables gets the full width of the window.
+
 ### Fixed
 
 - `AgentConversation` and `AgentConversationMessage` define `newFactory()`, so `AgentConversation::factory()` also works from a consuming application's tests.

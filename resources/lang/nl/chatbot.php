@@ -2,6 +2,7 @@
 
 return [
     'subtitle' => 'Stel een korte vraag of ga verder met het gesprek.',
+    'you' => 'Jij',
     'new_session' => 'Nieuwe sessie',
     'move_window' => 'Venster verplaatsen',
     'close_chat' => 'Chat sluiten',

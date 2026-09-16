@@ -18,29 +18,24 @@
     @foreach ($messages as $message)
         <div wire:key="chatbot-message-{{ $loop->index }}">
             @if ($message['role'] === \Laravel\Ai\Messages\MessageRole::User->value)
-                <div class="flex items-start justify-end gap-2.5">
-                    <div class="max-w-[75%]">
-                        <div class="chatbot-bubble chatbot-bubble-user prose prose-sm prose-invert max-w-none rounded-2xl rounded-br-md px-4 py-3 text-sm leading-6 text-white shadow-lg">
-                            {!! Str::markdown($message['content']) !!}
+                <div class="flex flex-col items-end gap-1.5">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-gray-500">{{ __('filament-chatbot::chatbot.you') }}</span>
+                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-500">
+                            <x-heroicon-m-user class="h-3.5 w-3.5" />
                         </div>
                     </div>
-                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-500">
-                        <x-heroicon-m-user class="h-3.5 w-3.5" />
+                    <div class="max-w-[85%]">
+                        <div class="chatbot-bubble chatbot-bubble-user prose prose-sm prose-invert max-w-none rounded-2xl rounded-tr-md px-4 py-3 text-sm leading-6 text-white shadow-lg">
+                            {!! Str::markdown($message['content']) !!}
+                        </div>
                     </div>
                 </div>
             @else
-                <div class="flex items-start gap-2.5">
-                    @if ($logoUrl && $logoUrl !== '')
-                        <img src="{{ $logoUrl }}" alt="{{ $name ?: 'AI' }}" class="mt-0.5 h-7 w-7 shrink-0 rounded-full object-cover">
-                    @else
-                        <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary-tint-15)] text-[rgb(var(--primary-700))]">
-                            <x-heroicon-m-sparkles class="h-3.5 w-3.5" />
-                        </div>
-                    @endif
-                    <div class="min-w-0 flex-1">
-                        <div class="chatbot-bubble chatbot-bubble-assistant prose prose-sm max-w-none rounded-2xl rounded-bl-md border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-lg">
-                            {!! Str::markdown($message['content']) !!}
-                        </div>
+                <div class="flex flex-col gap-1.5">
+                    @include('filament-chatbot::partials.chatbot-assistant-header')
+                    <div class="chatbot-bubble chatbot-bubble-assistant prose prose-sm max-w-none rounded-2xl rounded-tl-md border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-lg">
+                        {!! Str::markdown($message['content']) !!}
                     </div>
                 </div>
             @endif
@@ -253,17 +248,9 @@
 
                 await this.runHttp();
             }
-        }" x-init="init()" class="flex items-start gap-2.5">
-            @if ($logoUrl && $logoUrl !== '')
-                <img src="{{ $logoUrl }}" alt="{{ $name ?: 'AI' }}" class="mt-0.5 h-7 w-7 shrink-0 rounded-full object-cover">
-            @else
-                <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary-tint-15)] text-[rgb(var(--primary-700))]">
-                    <x-heroicon-m-sparkles class="h-3.5 w-3.5" />
-                </div>
-            @endif
-            <div class="min-w-0 flex-1">
-                <div class="chatbot-bubble chatbot-bubble-assistant prose prose-sm max-w-none rounded-2xl rounded-bl-md border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-lg" x-html="sanitizedHtml"></div>
-            </div>
+        }" x-init="init()" class="flex flex-col gap-1.5">
+            @include('filament-chatbot::partials.chatbot-assistant-header')
+            <div class="chatbot-bubble chatbot-bubble-assistant prose prose-sm max-w-none rounded-2xl rounded-tl-md border border-gray-200 bg-white/95 px-4 py-3 text-sm leading-6 text-gray-900 shadow-lg" x-html="sanitizedHtml"></div>
         </div>
     @endif
 </div>
