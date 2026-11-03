@@ -28,7 +28,10 @@ class FilamentChatbotServiceProvider extends PackageServiceProvider
             ->hasConfigFile('filament-chatbot')
             ->hasViews()
             ->hasTranslations()
-            ->hasMigration('create_agent_conversations_table')
+            ->hasMigrations([
+                'create_agent_conversations_table',
+                'upgrade_agent_conversations_for_laravel_ai_v1',
+            ])
             ->hasInstallCommand(function (InstallCommand $command): void {
                 $command
                     ->publishConfigFile()

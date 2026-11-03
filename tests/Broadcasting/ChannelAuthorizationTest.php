@@ -29,7 +29,7 @@ class ChannelAuthorizationTest extends TestCase
     public function it_authorizes_the_conversation_owner_on_the_private_channel(): void
     {
         $owner = $this->makeTestUser();
-        $conversation = AgentConversation::factory()->create(['user_id' => $owner->id]);
+        $conversation = AgentConversation::factory()->ownedBy($owner)->create();
 
         $callback = $this->chatbotChannelCallback();
 
@@ -41,7 +41,7 @@ class ChannelAuthorizationTest extends TestCase
     public function it_rejects_a_user_that_does_not_own_the_conversation(): void
     {
         $owner = $this->makeTestUser();
-        $conversation = AgentConversation::factory()->create(['user_id' => $owner->id]);
+        $conversation = AgentConversation::factory()->ownedBy($owner)->create();
 
         $stranger = new User;
         $stranger->id = 999;

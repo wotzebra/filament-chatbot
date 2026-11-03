@@ -2,8 +2,11 @@
 
 namespace Wotz\FilamentChatbot\Tests\Services;
 
+use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
+use Wotz\FilamentChatbot\Models\AgentConversation;
+use Wotz\FilamentChatbot\Models\AgentConversationMessage;
 use Wotz\FilamentChatbot\Services\ChatManager;
 use Wotz\FilamentChatbot\Tests\TestCase;
 
@@ -16,7 +19,8 @@ class ChatManagerTest extends TestCase
 
         $conversation = app(ChatManager::class)->start(user: $user);
 
-        $this->assertSame($user->id, $conversation->user_id);
+        $this->assertSame(User::class, $conversation->participant_type);
+        $this->assertSame($user->id, $conversation->participant_id);
     }
 
     #[Test]
@@ -36,5 +40,19 @@ class ChatManagerTest extends TestCase
         $conversation = app(ChatManager::class)->start(user: $this->makeTestUser());
 
         $this->assertSame('', $conversation->title);
+    }
+
+    #[Test]
+    public function it_leaves_failed_turns_out_of_the_history(): void
+    {
+        $conversation = AgentConversation::factory()->create();
+
+        AgentConversationMessage::factory()->user()->for($conversation, 'conversation')->create(['content' => 'Question']);
+        AgentConversationMessage::factory()->assistant()->failed()->for($conversation, 'conversation')->create(['content' => 'Half an answ']);
+
+        $this->assertSame(
+            [['role' => 'user', 'content' => 'Question']],
+            app(ChatManager::class)->history($conversation->id)->all(),
+        );
     }
 }

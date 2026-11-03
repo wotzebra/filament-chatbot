@@ -3,6 +3,7 @@
 namespace Wotz\FilamentChatbot\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Model;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 
 class AgentConversationFactory extends Factory
@@ -12,8 +13,17 @@ class AgentConversationFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => null,
+            'participant_type' => null,
+            'participant_id' => null,
             'title' => fake()->sentence(4),
         ];
+    }
+
+    public function ownedBy(Model $participant): static
+    {
+        return $this->state([
+            'participant_type' => $participant->getMorphClass(),
+            'participant_id' => $participant->getKey(),
+        ]);
     }
 }

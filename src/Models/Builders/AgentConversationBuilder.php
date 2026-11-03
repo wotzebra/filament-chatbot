@@ -4,6 +4,7 @@ namespace Wotz\FilamentChatbot\Models\Builders;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
+use Laravel\Ai\Models\Conversation;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 
 /**
@@ -13,6 +14,12 @@ class AgentConversationBuilder extends Builder
 {
     public function ownedBy(?Authenticatable $user): static
     {
-        return $this->where('user_id', $user?->getAuthIdentifier());
+        if ($user === null) {
+            return $this->whereNull('participant_type')->whereNull('participant_id');
+        }
+
+        return $this
+            ->where('participant_type', Conversation::participantType($user))
+            ->where('participant_id', $user->getAuthIdentifier());
     }
 }

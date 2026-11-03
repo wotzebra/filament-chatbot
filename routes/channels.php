@@ -11,7 +11,7 @@ Broadcast::channel(
     function (Authenticatable $user, string $conversationId): bool {
         return AgentConversation::query()
             ->whereKey($conversationId)
-            ->where('user_id', $user->getAuthIdentifier())
+            ->ownedBy($user)
             ->exists();
     },
 );

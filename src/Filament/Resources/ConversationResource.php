@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Wotz\FilamentChatbot\Filament\Resources\ConversationResource\Pages\ListConversations;
 use Wotz\FilamentChatbot\Filament\Resources\ConversationResource\Pages\ViewConversation;
 use Wotz\FilamentChatbot\Models\AgentConversation;
+use Wotz\FilamentChatbot\Models\Builders\AgentConversationBuilder;
 
 class ConversationResource extends Resource
 {
@@ -34,9 +35,8 @@ class ConversationResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('user.name')
-                    ->label('User')
-                    ->sortable(),
+                TextColumn::make('participant.name')
+                    ->label('User'),
 
                 TextColumn::make('messages_count')
                     ->counts('messages')
@@ -62,7 +62,7 @@ class ConversationResource extends Resource
                     ->schema([
                         TextEntry::make('title'),
 
-                        TextEntry::make('user.name')
+                        TextEntry::make('participant.name')
                             ->label('User'),
 
                         TextEntry::make('created_at')
@@ -86,7 +86,8 @@ class ConversationResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('user_id', auth()->id());
+        return parent::getEloquentQuery()
+            ->where(fn (AgentConversationBuilder $query) => $query->ownedBy(auth()->user()));
     }
 
     public static function getPages(): array

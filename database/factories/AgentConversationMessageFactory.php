@@ -3,6 +3,7 @@
 namespace Wotz\FilamentChatbot\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Laravel\Ai\Enums\MessageStatus;
 use Laravel\Ai\Messages\MessageRole;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 use Wotz\FilamentChatbot\Models\AgentConversationMessage;
@@ -15,16 +16,22 @@ class AgentConversationMessageFactory extends Factory
     {
         return [
             'conversation_id' => AgentConversation::factory(),
-            'user_id' => null,
+            'participant_type' => null,
+            'participant_id' => null,
             'agent' => fake()->word(),
             'role' => fake()->randomElement([MessageRole::User->value, MessageRole::Assistant->value]),
             'content' => fake()->paragraph(),
             'attachments' => [],
-            'tool_calls' => [],
-            'tool_results' => [],
+            'steps' => [],
             'usage' => [],
             'meta' => [],
+            'status' => MessageStatus::Completed,
         ];
+    }
+
+    public function failed(): static
+    {
+        return $this->state(['status' => MessageStatus::Failed]);
     }
 
     public function user(): static

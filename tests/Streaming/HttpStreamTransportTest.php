@@ -31,7 +31,7 @@ class HttpStreamTransportTest extends TestCase
     #[Test]
     public function it_returns_a_streamed_response_with_sse_headers(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $response = $this->actingAs($this->user)
             ->post(route('chatbot.stream'), [
@@ -50,7 +50,7 @@ class HttpStreamTransportTest extends TestCase
     #[Test]
     public function it_emits_sse_data_lines_and_terminates_with_the_done_marker(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $response = $this->actingAs($this->user)
             ->post(route('chatbot.stream'), [
@@ -69,7 +69,7 @@ class HttpStreamTransportTest extends TestCase
     {
         Assistant::fake(fn () => throw new RuntimeException('upstream blew up'));
 
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $response = $this->actingAs($this->user)
             ->post(route('chatbot.stream'), [

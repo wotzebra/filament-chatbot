@@ -69,6 +69,15 @@ abstract class TestCase extends Orchestra
         return $user;
     }
 
+    protected function makeOtherUser(): User
+    {
+        $user = new User;
+        $user->id = 999;
+        $user->name = 'Other User';
+
+        return $user;
+    }
+
     protected function conversationKey(): string
     {
         return filament('chatbot')->getConversationKey();

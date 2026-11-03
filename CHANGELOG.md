@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** requires `laravel/ai` `^1.3`. The conversation tables follow the laravel/ai 1.x schema: `user_id` is replaced by the polymorphic `participant_type` / `participant_id` columns, and `tool_calls` / `tool_results` are replaced by `steps` and `status`. See [UPGRADING](UPGRADING.md).
+- `AgentConversation::user()` is replaced by the `participant()` morph relation.
+- Failed turns, which laravel/ai now stores with a `failed` status, are left out of the chat history.
+
 ### Added
+
+- `upgrade_agent_conversations_for_laravel_ai_v1` migration that moves existing conversation tables to the new schema.
 
 - Configurable stream transport (`http` or `websocket`). The WebSocket transport uses Laravel Reverb broadcasting to deliver streaming AI responses on private per-conversation channels, enabling realtime server-to-UI pushes alongside the existing SSE transport. Selected via `FILAMENT_CHATBOT_STREAM_TRANSPORT`; defaults to `http` for backwards compatibility.
 
