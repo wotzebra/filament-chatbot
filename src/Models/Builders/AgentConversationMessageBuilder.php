@@ -3,6 +3,7 @@
 namespace Wotz\FilamentChatbot\Models\Builders;
 
 use Illuminate\Database\Eloquent\Builder;
+use Laravel\Ai\Enums\MessageStatus;
 use Laravel\Ai\Messages\MessageRole;
 use Wotz\FilamentChatbot\Models\AgentConversationMessage;
 
@@ -25,10 +26,12 @@ class AgentConversationMessageBuilder extends Builder
 
     public function visibleInChat(): static
     {
-        $this->whereIn('role', [
-            MessageRole::User->value,
-            MessageRole::Assistant->value,
-        ]);
+        $this
+            ->whereIn('role', [
+                MessageRole::User->value,
+                MessageRole::Assistant->value,
+            ])
+            ->where('status', '!=', MessageStatus::Failed->value);
 
         return $this;
     }

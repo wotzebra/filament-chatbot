@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Wotz\FilamentChatbot\Agents\Assistant;
+use Wotz\FilamentChatbot\Facades\Chat;
 use Wotz\FilamentChatbot\Jobs\StreamAgentResponseJob;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 use Wotz\FilamentChatbot\Tests\TestCase;
@@ -40,7 +41,7 @@ class ChatStreamControllerTest extends TestCase
     #[Test]
     public function it_streams_a_response_for_an_authenticated_request(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $this->actingAs($this->user)
             ->post(route('chatbot.stream'), [
@@ -52,7 +53,7 @@ class ChatStreamControllerTest extends TestCase
     #[Test]
     public function it_forwards_the_user_message_to_the_agent(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $this->actingAs($this->user)
             ->post(route('chatbot.stream'), [
@@ -66,7 +67,7 @@ class ChatStreamControllerTest extends TestCase
     #[Test]
     public function it_trims_whitespace_from_the_user_message_before_forwarding_it_to_the_agent(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $this->actingAs($this->user)
             ->post(route('chatbot.stream'), [
@@ -80,7 +81,7 @@ class ChatStreamControllerTest extends TestCase
     #[Test]
     public function it_returns_403_when_the_conversation_belongs_to_another_user(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => 999]);
+        $conversation = AgentConversation::factory()->ownedBy($this->makeOtherUser())->create();
 
         $this->actingAs($this->user)
             ->postJson(route('chatbot.stream'), [
@@ -119,7 +120,7 @@ class ChatStreamControllerTest extends TestCase
     #[Test]
     public function it_returns_422_when_the_context_is_not_an_array(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $this->actingAs($this->user)
             ->postJson(route('chatbot.stream'), [
@@ -132,7 +133,7 @@ class ChatStreamControllerTest extends TestCase
     #[Test]
     public function it_resolves_context_via_the_plugin_resolver_and_stores_it_in_laravel_context(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $this->chatbotPlugin->contextResolver(
             fn (array $context) => $context === [] ? null : 'resolved: ' . json_encode($context),
@@ -154,7 +155,7 @@ class ChatStreamControllerTest extends TestCase
     #[Test]
     public function it_stores_null_in_laravel_context_when_no_context_is_sent(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         Context::addHidden('chatbot.context', 'stale');
 
@@ -168,11 +169,28 @@ class ChatStreamControllerTest extends TestCase
     }
 
     #[Test]
+    public function it_stores_the_exchange_in_the_conversation_history(): void
+    {
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
+
+        $this->actingAs($this->user)
+            ->post(route('chatbot.stream'), [
+                'message' => 'Where do I edit the menu?',
+                'conversation_id' => $conversation->id,
+            ])->streamedContent();
+
+        $this->assertSame([
+            ['role' => 'user', 'content' => 'Where do I edit the menu?'],
+            ['role' => 'assistant', 'content' => 'Hello from the AI!'],
+        ], Chat::history($conversation->id)->all());
+    }
+
+    #[Test]
     public function it_can_force_the_http_transport_when_websocket_is_configured(): void
     {
         config()->set('filament-chatbot.stream.transport', 'websocket');
 
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $response = $this->actingAs($this->user)
             ->post(route('chatbot.stream'), [
@@ -193,7 +211,7 @@ class ChatStreamControllerTest extends TestCase
         config()->set('filament-chatbot.stream.transport', 'websocket');
         Queue::fake();
 
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
         $message = fake()->sentence();
 
         session()->put(filament('chatbot')->getConversationKey() . '_active_streams', [

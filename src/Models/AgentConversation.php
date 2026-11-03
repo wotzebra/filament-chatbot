@@ -6,16 +6,16 @@ use Illuminate\Database\Eloquent\Attributes\UseEloquentBuilder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
 use Wotz\FilamentChatbot\Database\Factories\AgentConversationFactory;
-use Wotz\FilamentChatbot\Filament\Plugins\ChatbotPlugin;
 use Wotz\FilamentChatbot\Models\Builders\AgentConversationBuilder;
 
 /**
  * @property string $id
- * @property int|null $user_id
+ * @property string|null $participant_type
+ * @property int|null $participant_id
  * @property string $title
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -30,12 +30,9 @@ class AgentConversation extends Model
 
     protected $guarded = [];
 
-    public function user(): BelongsTo
+    public function participant(): MorphTo
     {
-        /** @var ChatbotPlugin $chatbot */
-        $chatbot = filament('chatbot');
-
-        return $this->belongsTo($chatbot->getUserModel(), 'user_id');
+        return $this->morphTo();
     }
 
     public function messages(): HasMany

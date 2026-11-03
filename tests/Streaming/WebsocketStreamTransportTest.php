@@ -81,7 +81,7 @@ class WebsocketStreamTransportTest extends TestCase
     {
         Queue::fake();
 
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         $response = $this->actingAs($this->user)
             ->postJson(route('chatbot.stream'), [
@@ -107,7 +107,7 @@ class WebsocketStreamTransportTest extends TestCase
     {
         Queue::fake();
 
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
         $message = fake()->sentence();
 
         $this->actingAs($this->user)
@@ -129,7 +129,7 @@ class WebsocketStreamTransportTest extends TestCase
     {
         Queue::fake();
 
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
         $message = fake()->sentence();
 
         session()->put($this->activeStreamsKey(), [
@@ -151,7 +151,7 @@ class WebsocketStreamTransportTest extends TestCase
         config()->set('broadcasting.default', 'log');
         Log::spy();
 
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         (new StreamAgentResponseJob(
             conversationId: $conversation->id,
@@ -175,7 +175,7 @@ class WebsocketStreamTransportTest extends TestCase
         config()->set('broadcasting.default', 'log');
         Log::spy();
 
-        $conversation = AgentConversation::factory()->create(['user_id' => $this->user->id]);
+        $conversation = AgentConversation::factory()->ownedBy($this->user)->create();
 
         (new StreamAgentResponseJob(
             conversationId: $conversation->id,

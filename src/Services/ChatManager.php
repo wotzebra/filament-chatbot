@@ -5,6 +5,7 @@ namespace Wotz\FilamentChatbot\Services;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Laravel\Ai\Models\Conversation;
 use Wotz\FilamentChatbot\Models\AgentConversation;
 use Wotz\FilamentChatbot\Models\AgentConversationMessage;
 use Wotz\FilamentChatbot\Support\Chatbot\PreparePendingChat;
@@ -16,7 +17,8 @@ class ChatManager
     public function start(?Authenticatable $user = null, string $title = ''): AgentConversation
     {
         return AgentConversation::create([
-            'user_id' => $user?->getAuthIdentifier(),
+            'participant_type' => $user !== null ? Conversation::participantType($user) : null,
+            'participant_id' => $user?->getAuthIdentifier(),
             'title' => $title !== '' ? Str::limit($title, 80) : '',
         ]);
     }

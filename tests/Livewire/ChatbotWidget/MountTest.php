@@ -58,7 +58,7 @@ class MountTest extends TestCase
     #[Test]
     public function it_ignores_a_session_conversation_id_that_is_not_owned_by_the_current_user(): void
     {
-        $conversation = AgentConversation::factory()->create(['user_id' => 999]);
+        $conversation = AgentConversation::factory()->ownedBy($this->makeOtherUser())->create();
 
         session()->put($this->conversationKey(), $conversation->id);
 

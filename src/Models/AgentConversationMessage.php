@@ -7,16 +7,20 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Laravel\Ai\Enums\MessageStatus;
 use Wotz\FilamentChatbot\Database\Factories\AgentConversationMessageFactory;
 use Wotz\FilamentChatbot\Models\Builders\AgentConversationMessageBuilder;
 
 /**
  * @property string $id
  * @property string $conversation_id
- * @property int|null $user_id
+ * @property string|null $participant_type
+ * @property int|null $participant_id
  * @property string $agent
  * @property string $role
  * @property string $content
+ * @property array<int, array<string, mixed>> $steps
+ * @property MessageStatus $status
  */
 #[UseEloquentBuilder(AgentConversationMessageBuilder::class)]
 class AgentConversationMessage extends Model
@@ -32,10 +36,10 @@ class AgentConversationMessage extends Model
     {
         return [
             'attachments' => 'array',
-            'tool_calls' => 'array',
-            'tool_results' => 'array',
+            'steps' => 'array',
             'usage' => 'array',
             'meta' => 'array',
+            'status' => MessageStatus::class,
         ];
     }
 
